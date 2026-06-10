@@ -1213,66 +1213,88 @@ function rvSelect(lbl,key,cur,opts,req=false){const o=opts.map(v=>`<option value
 function rvFU(){return`<div class="review-field"><div class="review-field-label">Follow Up <span class="req">*</span></div><div class="review-field-input"><input type="date" id="rv_fu_date" style="width:100%;background:var(--surface);border:1px solid var(--border);border-radius:6px;padding:7px 10px;color:var(--text)"><textarea id="rv_fu_obs" placeholder="Observação..." rows="2" style="width:100%;margin-top:6px;background:var(--surface);border:1px solid var(--border);border-radius:6px;padding:7px 10px;color:var(--text);font-size:.8rem;font-family:inherit"></textarea></div></div>`;}
 function rvHist(ph,req=false){return`<div class="review-field"><div class="review-field-label">Histórico${req?' <span class="req">*</span>':''}</div><div class="review-field-input"><textarea id="rv_hist" placeholder="${ph}" data-req="${req}" rows="3" style="width:100%;background:var(--surface);border:1px solid var(--border);border-radius:6px;padding:7px 10px;color:var(--text);font-size:.8rem;font-family:inherit"></textarea></div></div>`;}
 
-function confirmReview(){
-  if(!rvCtx)return;
-  const{card,from,to}=rvCtx;
-  let errs=[];
+function confirmReview() {
+  if(!rvCtx) return;
+  const card = rvCtx.card;
+  const from = rvCtx.from;
+  const to = rvCtx.to;
+  let errs = [];
 
-  document.querySelectorAll('#rvBody [data-key]').forEach(el=>{
-    const v=el.value.trim();
-    if(el.dataset.req==='true'&&!v){
+  document.querySelectorAll('#rvBody [data-key]').forEach(function(el) {
+    const v = el.value.trim();
+    if(el.dataset.req === 'true' && !v) {
       errs.push(el.dataset.key);
-      el.style.borderColor='var(--red)';
-    }else{
-      el.style.borderColor='';
-      if(v)rvCtx.updates[el.dataset.key]=v;
+      el.style.borderColor = 'var(--red)';
+    } else {
+      el.style.borderColor = '';
+      if(v) rvCtx.updates[el.dataset.key] = v;
     }
   });
 
-  const histEl=document.getElementById('rv_hist');
-  const histVal=histEl?histEl.value.trim():'';
-  if(histEl&&histEl.dataset.req==='true'&&!histVal){
+  const histEl = document.getElementById('rv_hist');
+  const histVal = histEl ? histEl.value.trim() : '';
+  if(histEl && histEl.dataset.req === 'true' && !histVal) {
     errs.push('Histórico');
-    histEl.style.borderColor='var(--red)';
+    histEl.style.borderColor = 'var(--red)';
   }
 
-  const fuDate=document.getElementById('rv_fu_date');
-  if(fuDate!==null&&!fuDate.value){
+  const fuDate = document.getElementById('rv_fu_date');
+  if(fuDate !== null && fuDate && !fuDate.value) {
     errs.push('Follow Up (data)');
-    fuDate.style.borderColor='var(--red)';
+    fuDate.style.borderColor = 'var(--red)';
   }
 
-  if(errs.length){
-    alert('Preencha os campos obrigatórios:\n• '+errs.join('\n• '));
+  if(errs.length > 0) {
+    alert('Preencha os campos obrigatórios:\n• ' + errs.join('\n• '));
     return;
   }
 
-  Object.assign(card,rvCtx.updates);
+  Object.assign(card, rvCtx.updates);
 
-  if(rvCtx.updates.premioBruto||rvCtx.updates.percentComissao){
-    const pb=parseFloat(card.premioBruto)||0,iof=pb*0.0738;
-    if(!card.premioLiquidoManual)card.premioLiquido=pb-iof;
-    card.faturamento=parseFloat(card.premioLiquido)*(parseFloat(card.percentComissao)||0)/100;
+  if(rvCtx.updates.premioBruto || rvCtx.updates.percentComissao) {
+    const pb = parseFloat(card.premioBruto) || 0;
+    const iof = pb * 0.0738;
+    if(!card.premioLiquidoManual) card.premioLiquido = pb - iof;
+    card.faturamento = (parseFloat(card.premioLiquido) || 0) * (parseFloat(card.percentComissao) || 0) / 100;
   }
 
-  if(fuDate!==null&&fuDate.value){
-    if(!card.followUps)card.followUps=[];
-    const obs=document.getElementById('rv_fu_obs')?.value.trim()||'';
-    card.followUps.push({id:uid(),date:fuDate.value,obs,status:'pending',type:'followup',createdAt:nowISO()});
-    addHist(card,'Follow Up agendado para '+isoToPt(fuDate.value)+(obs?' — '+obs:''),'auto');
+  if(fuDate !== null && fuDate && fuDate.value) {
+    if(!card.followUps) card.followUps = [];
+    const obsEl = document.getElementById('rv_fu_obs');
+    const obs = obsEl ? obsEl.value.trim() : '';
+    card.followUps.push({
+      id: uid(),
+      date: fuDate.value,
+      obs: obs,
+      status: 'pending',
+      type: 'followup',
+      createdAt: nowISO()
+    });
+    addHist(card, 'Follow Up agendado para ' + isoToPt(fuDate.value) + (obs ? ' — ' + obs : ''), 'auto');
   }
 
-  if(histVal)addHist(card,histVal,{fechado:'encerra',perdido:'perda'}[to.id]||'manual');
-  if(to.id==='perdido'&&rvCtx.updates.motivoPerda)addHist(card,'PERDA — '+rvCtx.updates.motivoPerda,'perda');
+  if(histVal) {
+    const histType = to.id === 'fechado' ? 'encerra' : to.id === 'perdido' ? 'perda' : 'manual';
+    addHist(card, histVal, histType);
+  }
 
-  card.stageId=to.id;
-  card.ultimaInteracao=nowISO();
-  card.updatedAt=nowISO();
-  if(!card.migrationHistory)card.migrationHistory=[];
-  card.migrationHistory.push({from:from.name,to:to.name,at:nowISO()});
+  if(to.id === 'perdido' && rvCtx.updates.motivoPerda) {
+    addHist(card, 'PERDA — ' + rvCtx.updates.motivoPerda, 'perda');
+  }
+
+  card.stageId = to.id;
+  card.ultimaInteracao = nowISO();
+  card.updatedAt = nowISO();
+
+  if(!card.migrationHistory) card.migrationHistory = [];
+  card.migrationHistory.push({
+    from: from.name,
+    to: to.name,
+    at: nowISO()
+  });
 
   document.getElementById('reviewOverlay').classList.add('hidden');
-  rvCtx=null;
+  rvCtx = null;
   saveState();
   renderBoard();
 }
@@ -1894,6 +1916,16 @@ function renderDashboard(){
   }
 
   document.getElementById('dashBody').innerHTML=html;
+}
+function addHist(card, text, type) {
+  if(!type) type = 'manual';
+  if(!card.history) card.history = [];
+  card.history.push({
+    id: uid(),
+    text: String(text || ''),
+    type: String(type),
+    date: nowISO()
+  });
 }
 
 </script>
