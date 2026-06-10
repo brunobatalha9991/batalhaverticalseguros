@@ -1545,8 +1545,8 @@ function saveCard(){
     const pl=curCard.premioLiquidoManual?(parseFloat(document.getElementById('f_premioLiquido').value)||0):pb-iof;
     curCard.premioBruto=pb;
     curCard.percentComissao=pc;
-    curCard.premioLiquido=pl;
-    curCard.faturamento=pl*pc/100;
+curCard.premioLiquido=Math.round(pl*100)/100;
+curCard.faturamento=Math.round((pl*pc/100)*100)/100;
     curCard.seguradora=g('f_seguradora');
     curCard.numCotacao=g('f_numCotacao');
     curCard.motivoPerda=g('f_motivoPerda');
@@ -1687,7 +1687,7 @@ function confirmImport(){
       const gRaw=idx=>{const v=row[idx];if(v===null||v===undefined)return'';return v;};
       const nome=g(0);if(!nome){erroLinhas.push(rowIdx+2);return;}
       const parsNum=s=>{if(!s)return 0;const n=parseFloat(String(s).replace(/[^\d.,\-]/g,'').replace(',','.'));return isNaN(n)?0:n;};
-      const pb=parsNum(g(11)),pc=parsNum(g(12)),iof=pb*0.06872,pl=pb-iof,fat=pl*pc/100;
+      const pb=parsNum(g(11)),pc=parsNum(g(12)),iof=pb*0.06872,pl=Math.round((pb-iof)*100)/100,fat=Math.round((pl*pc/100)*100)/100;
       const addIfNew=(key,val)=>{if(key==='responsaveis')return;if(val&&!state[key].includes(val))state[key].push(val);};
       addIfNew('ramos',g(3));addIfNew('fontes',g(4));addIfNew('seguradoras',g(6));
       const now=nowISO();
