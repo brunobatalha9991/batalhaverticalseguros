@@ -1343,25 +1343,22 @@ function tabDados(){
   const colors=CARD_COLORS.map(col=>`<div class="color-swatch ${c.color===col?'selected':''}" style="background:${col}" onclick="selColor('${col}')"></div>`).join('');
   const tagsH=(c.tags||[]).map(t=>`<div class="tag-chip">${t}<button onclick="rmTag('${t}')"></button></div>`).join('');
   const respField=isAdmin?`<div class="input-with-btn"><select id="f_responsavel"><option value="">Selecione...</option>${state.responsaveis.map(r=>`<option value="${r}" ${r===c.responsavel?'selected':''}>${r}</option>`).join('')}</select><button class="btn btn-ghost btn-xs" onclick="openManageModal('responsaveis')">+</button></div>`:`<input id="f_responsavel_display" value="${c.responsavel}" readonly>`;
-  const ultimaAcao=c.ultimaInteracao?fmtDateTime(c.ultimaInteracao):'Nenhuma ação registrada';
+  const ultimaAcao=c.ultimaInteracao?fmtDateTime(c.ultimaInteracao):'Nenhuma ao registrada';
   return `<div class="form-grid">
     <div class="form-group full"><label>Nome Completo <span class="req">*</span></label><input id="f_nome" value="${c.nome||''}" placeholder="Nome do cliente"></div>
     <div class="form-group"><label>Tipo ${R('tipo')}</label><select id="f_tipo"><option value="">Selecione...</option>${tipoOpts}</select></div>
     <div class="form-group"><label>Temperatura ${R('temperatura')}</label><select id="f_temperatura"><option value="">Selecione...</option>${tempOpts}</select></div>
-    <div class="form-group"><label>Responsável ${R('responsavel')}</label>${respField}</div>
+    <div class="form-group"><label>Responsvel ${R('responsavel')}</label>${respField}</div>
     <div class="form-group"><label>Contato</label><input id="f_contato" value="${c.contato||''}" placeholder="Fone / e-mail"></div>
     <div class="form-group"><label>Ramo ${R('ramo')}</label><div class="input-with-btn"><select id="f_ramo"><option value="">Selecione...</option>${ramoOpts}</select><button class="btn btn-ghost btn-xs" onclick="openManageModal('ramos')">+</button></div></div>
     <div class="form-group"><label>Fonte ${R('fonte')}</label><div class="input-with-btn"><select id="f_fonte"><option value="">Selecione...</option>${fonteOpts}</select><button class="btn btn-ghost btn-xs" onclick="openManageModal('fontes')">+</button></div></div>
-    <div class="form-group"><label>Data Lançamento</label><input type="date" value="${c.dLancamento||todayStr()}" readonly></div>
-    <div class="form-group"><label>Início Atendimento ${R('dInicio')}</label><input id="f_dInicio" type="date" value="${c.dInicio||''}"></div>
-    <div class="form-group"><label>Vigência Inicial</label><input id="f_dVigenciaInicial" type="date" value="${c.dVigenciaInicial||''}"></div>
+    <div class="form-group"><label>Data Lanamento</label><input type="date" value="${c.dLancamento||todayStr()}" readonly></div>
+    <div class="form-group"><label>Incio Atendimento ${R('dInicio')}</label><input id="f_dInicio" type="date" value="${c.dInicio||''}"></div>
+    <div class="form-group"><label>Vigncia Inicial</label><input id="f_dVigenciaInicial" type="date" value="${c.dVigenciaInicial||''}"></div>
     <div class="form-group"><label>Encerramento</label><input id="f_dEncerramento" type="date" value="${c.dEncerramento||''}"></div>
-    <div class="form-group"><label>Vencimento Apólice ${R('vencimentoApolice')}</label><input id="f_vencimentoApolice" type="date" value="${c.vencimentoApolice||''}"></div>
-    <div class="form-group full" style="background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:10px 12px;display:flex;align-items:center;justify-content:space-between">
-      <span style="font-size:.74rem;color:var(--text3);font-weight:700;text-transform:uppercase;letter-spacing:.05em"> Última Ação</span>
-      <span style="font-size:.82rem;color:var(--accent);font-weight:600">${ultimaAcao}</span>
-    </div>
-    <div class="form-group full"><label>Descrição</label><textarea id="f_descricao" rows="3">${c.descricao||''}</textarea></div>
+    <div class="form-group"><label>Vencimento Aplice ${R('vencimentoApolice')}</label><input id="f_vencimentoApolice" type="date" value="${c.vencimentoApolice||''}"></div>
+    <div class="form-group full" style="background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:10px 12px;display:flex;align-items:center;justify-content:space-between"><span style="font-size:.74rem;color:var(--text3);font-weight:700;text-transform:uppercase;letter-spacing:.05em"> ltima Ao</span><span style="font-size:.82rem;color:var(--accent);font-weight:600">${ultimaAcao}</span></div>
+    <div class="form-group full"><label>Descrio</label><textarea id="f_descricao" rows="3">${c.descricao||''}</textarea></div>
     <div class="form-group full"><label>Tags</label><div class="tags-input-wrap" id="tagsWrap">${tagsH}<input id="tagInput" placeholder="Digite e Enter..." onkeydown="addTag(event)"></div></div>
     <div class="form-group full"><label>Cor do Card</label><div class="color-picker-row">${colors}</div></div>
   </div>`;
