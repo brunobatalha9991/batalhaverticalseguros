@@ -1605,8 +1605,8 @@ function updateMasterSummary(vis){
   let b=0,l=0,f=0,cm=[];
   fechados.forEach(c=>{b+=parseFloat(c.premioBruto)||0;l+=parseFloat(c.premioLiquido)||0;f+=parseFloat(c.faturamento)||0;const p=parseFloat(c.percentComissao);if(!isNaN(p)&&p>0)cm.push(p);});
   const med=cm.length?cm.reduce((a,x)=>a+x,0)/cm.length:0;
-  document.getElementById('ms-bruto').textContent=fmtBRL(b);document.getElementById('ms-liquido').textContent=fmtBRL(l);
-  document.getElementById('ms-fat').textContent=fmtBRL(f);document.getElementById('ms-qtd').textContent=fechados.length;document.getElementById('ms-comissao').textContent=fmtPct(med);
+  document.getElementById('ms-bruto').textContent=fmtBRL2(b);document.getElementById('ms-liquido').textContent=fmtBRL2(l);
+  document.getElementById('ms-fat').textContent=fmtBRL2(f);document.getElementById('ms-qtd').textContent=fechados.length;document.getElementById('ms-comissao').textContent=fmtPct(med);
 }
 
 // ═══════════════════════════════════════
