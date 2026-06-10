@@ -1338,11 +1338,12 @@ function tabDados(){
   const reqF=getReqF(c.stageId),R=f=>reqF.includes(f)?`<span class="req">*</span>`:'';
   const fonteOpts=state.fontes.map(f=>`<option value="${f}" ${f===c.fonte?'selected':''}>${f}</option>`).join('');
   const ramoOpts=state.ramos.map(r=>`<option value="${r}" ${r===c.ramo?'selected':''}>${r}</option>`).join('');
-  const tipoOpts=['Novo','Endosso','Renovação'].map(t=>`<option value="${t}" ${t===c.tipo?'selected':''}>${t}</option>`).join('');
+  const tipoOpts=['Novo','Endosso','Renovao'].map(t=>`<option value="${t}" ${t===c.tipo?'selected':''}>${t}</option>`).join('');
   const tempOpts=Object.keys(TEMP_CFG).map(t=>`<option value="${t}" ${t===c.temperatura?'selected':''}>${t}</option>`).join('');
   const colors=CARD_COLORS.map(col=>`<div class="color-swatch ${c.color===col?'selected':''}" style="background:${col}" onclick="selColor('${col}')"></div>`).join('');
-  const tagsH=(c.tags||[]).map(t=>`<div class="tag-chip">${t}<button onclick="rmTag('${t}')">×</button></div>`).join('');
+  const tagsH=(c.tags||[]).map(t=>`<div class="tag-chip">${t}<button onclick="rmTag('${t}')"></button></div>`).join('');
   const respField=isAdmin?`<div class="input-with-btn"><select id="f_responsavel"><option value="">Selecione...</option>${state.responsaveis.map(r=>`<option value="${r}" ${r===c.responsavel?'selected':''}>${r}</option>`).join('')}</select><button class="btn btn-ghost btn-xs" onclick="openManageModal('responsaveis')">+</button></div>`:`<input id="f_responsavel_display" value="${c.responsavel}" readonly>`;
+  const ultimaAcao=c.ultimaInteracao?fmtDateTime(c.ultimaInteracao):'Nenhuma ação registrada';
   return `<div class="form-grid">
     <div class="form-group full"><label>Nome Completo <span class="req">*</span></label><input id="f_nome" value="${c.nome||''}" placeholder="Nome do cliente"></div>
     <div class="form-group"><label>Tipo ${R('tipo')}</label><select id="f_tipo"><option value="">Selecione...</option>${tipoOpts}</select></div>
@@ -1356,11 +1357,16 @@ function tabDados(){
     <div class="form-group"><label>Vigência Inicial</label><input id="f_dVigenciaInicial" type="date" value="${c.dVigenciaInicial||''}"></div>
     <div class="form-group"><label>Encerramento</label><input id="f_dEncerramento" type="date" value="${c.dEncerramento||''}"></div>
     <div class="form-group"><label>Vencimento Apólice ${R('vencimentoApolice')}</label><input id="f_vencimentoApolice" type="date" value="${c.vencimentoApolice||''}"></div>
+    <div class="form-group full" style="background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:10px 12px;display:flex;align-items:center;justify-content:space-between">
+      <span style="font-size:.74rem;color:var(--text3);font-weight:700;text-transform:uppercase;letter-spacing:.05em"> Última Ação</span>
+      <span style="font-size:.82rem;color:var(--accent);font-weight:600">${ultimaAcao}</span>
+    </div>
     <div class="form-group full"><label>Descrição</label><textarea id="f_descricao" rows="3">${c.descricao||''}</textarea></div>
     <div class="form-group full"><label>Tags</label><div class="tags-input-wrap" id="tagsWrap">${tagsH}<input id="tagInput" placeholder="Digite e Enter..." onkeydown="addTag(event)"></div></div>
     <div class="form-group full"><label>Cor do Card</label><div class="color-picker-row">${colors}</div></div>
   </div>`;
 }
+
 function getReqF(sid){if(sid==='renovacao')return['tipo','temperatura','ramo','vencimentoApolice'];if(sid==='prospeccao')return['tipo','temperatura','fonte','ramo'];return[];}
 
 function tabFin(){
