@@ -1138,7 +1138,7 @@ function buildTotals(stage,cards){
   let b=0,l=0,f=0,cm=[];
   cards.forEach(c=>{b+=parseFloat(c.premioBruto)||0;l+=parseFloat(c.premioLiquido)||0;f+=parseFloat(c.faturamento)||0;const p=parseFloat(c.percentComissao);if(!isNaN(p)&&p>0)cm.push(p);});
   const med=cm.length?cm.reduce((a,x)=>a+x,0)/cm.length:0;
-  return `<div class="col-totals"><div class="col-total-row"><span>Prêmio Bruto</span><span>${fmtBRL(b)}</span></div><div class="col-total-row"><span>Prêmio Líquido</span><span>${fmtBRL(l)}</span></div><div class="col-total-row"><span>Faturamento</span><span>${fmtBRL(f)}</span></div><div class="col-total-row"><span>Qtd.</span><span>${cards.length}</span></div><div class="col-total-row"><span>Média Comissão</span><span>${fmtPct(med)}</span></div></div>`;
+  return `<div class="col-totals"><div class="col-total-row"><span>Prêmio Bruto</span><span>${fmtBRL2(b)}</span></div><div class="col-total-row"><span>Prêmio Líquido</span><span>${fmtBRL2(l)}</span></div><div class="col-total-row"><span>Faturamento</span><span>${fmtBRL2(f)}</span></div><div class="col-total-row"><span>Qtd.</span><span>${cards.length}</span></div><div class="col-total-row"><span>Média Comissão</span><span>${fmtPct(med)}</span></div></div>`;
 }
 
 function buildCardHTML(card,stage){
