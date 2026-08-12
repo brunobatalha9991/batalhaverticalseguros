@@ -1202,20 +1202,26 @@ function parseBRNum(s){
   const med=cm.length?cm.reduce((a,x)=>a+x,0)/cm.length:0;
   return `<div class="col-totals"><div class="col-total-row"><span>Prêmio Bruto Anterior</span><span>${fmtBRL2(b)}</span></div><div class="col-total-row"><span>Prêmio Líquido Anterior</span><span>${fmtBRL2(l)}</span></div><div class="col-total-row"><span>Faturamento Anterior</span><span>${fmtBRL2(f)}</span></div><div class="col-total-row"><span>Qtd.</span><span>${cards.length}</span></div><div class="col-total-row"><span>Média Comissão Anterior</span><span>${fmtPct(med)}</span></div></div>`;
 }
-    function buildCardHTML(card,stage){
-      const tc=TEMP_CFG[card.temperatura]||{bg:'#1e293b',color:'#94a3b8',emoji:''};
-      const tags=(card.tags||[]).slice(0,2).map(t=>`<span class="badge badge-tag">${t}</span>`).join('');
-      const npsScore=card.npsEntries&&card.npsEntries.length>0?`<span style="font-size:.68rem;color:var(--yellow);font-weight:700">⭐ NPS ${card.npsEntries[card.npsEntries.length-1].nota}</span>`:'';
-      const indCount=(card.indicacoes||[]).length>0?`<span style="font-size:.68rem;color:var(--green);font-weight:700">🤝 ${card.indicacoes.length} indicação(ões)</span>`:'';
-      return `<div class="kanban-card" id="card-${card.id}" draggable="true" ondragstart="onDragStart(event,'${card.id}')" ondragend="onDragEnd(event)" onclick="openEditCard('${card.id}')">
-        ${buildNeonAlerts(card,stage)}
-        <div class="card-top"><div class="card-color-bar" style="background:${card.color||stage.color}"></div><div class="card-info"><div class="card-name">${card.nome||'Sem nome'}</div><div class="card-sub">${card.responsavel||''} • ${card.seguradora||''}</div></div></div>
-        <div class="card-badges">${card.tipo?`<span class="badge badge-type">${card.tipo}</span>`:''}${card.temperatura?`<span class="badge-temp badge" style="background:${tc.bg};color:${tc.color}">${tc.emoji} ${card.temperatura}</span>`:''}${card.ramo?`<span class="badge badge-tag">${card.ramo}</span>`:''}${tags}</div>
-        <div class="card-financials"><span><span>Prêmio Bruto</span><strong>${fmtBRL2(card.premioBruto)}</strong></span><span><span>% Comissão</span><strong>${fmtPct(card.percentComissao)}</strong></span><span><span>Faturamento</span><strong>${fmtBRL2(card.faturamento)}</strong></span></div>
-        ${npsScore||indCount?`<div style="display:flex;gap:8px;margin-top:4px">${npsScore}${indCount}</div>`:''}
-        ${buildFUStrip(card)}
-      </div>`;
-    }
+  function buildCardHTML(card,stage){
+  const tc=TEMP_CFG[card.temperatura]||{bg:'#1e293b',color:'#94a3b8',emoji:''};
+  const tags=(card.tags||[]).slice(0,2).map(t=>`<span class="badge badge-tag">${t}</span>`).join('');
+  const npsScore=card.npsEntries&&card.npsEntries.length>0?`<span style="font-size:.68rem;color:var(--yellow);font-weight:700">⭐ NPS ${card.npsEntries[card.npsEntries.length-1].nota}</span>`:'';
+  const indCount=(card.indicacoes||[]).length>0?`<span style="font-size:.68rem;color:var(--green);font-weight:700">🤝 ${card.indicacoes.length} indicação(ões)</span>`:'';
+  const vencTxt=card.vencimentoApolice?isoToPt(card.vencimentoApolice):'Sem vencimento';
+  const isRenovAnt=card.tipo==='Renovação'&&stage.id==='renovacao';
+  const pbShow=isRenovAnt?card.premioBrutoAnterior:card.premioBruto;
+  const pcShow=isRenovAnt?card.percentComissaoAnterior:card.percentComissao;
+  const fatShow=isRenovAnt?card.faturamentoAnterior:card.faturamento;
+  const finTag=isRenovAnt?' Ant.':'';
+  return `<div class="kanban-card" id="card-${card.id}" draggable="true" ondragstart="onDragStart(event,'${card.id}')" ondragend="onDragEnd(event)" onclick="openEditCard('${card.id}')">
+    ${buildNeonAlerts(card,stage)}
+    <div class="card-top"><div class="card-color-bar" style="background:${card.color||stage.color}"></div><div class="card-info"><div class="card-name">${card.nome||'Sem nome'}</div><div class="card-sub">${vencTxt} • ${card.seguradora||''}</div></div></div>
+    <div class="card-badges">${card.tipo?`<span class="badge badge-type">${card.tipo}</span>`:''}${card.temperatura?`<span class="badge-temp badge" style="background:${tc.bg};color:${tc.color}">${tc.emoji} ${card.temperatura}</span>`:''}${card.ramo?`<span class="badge badge-tag">${card.ramo}</span>`:''}${tags}</div>
+    <div class="card-financials"><span><span>Prêmio Bruto${finTag}</span><strong>${fmtBRL2(pbShow)}</strong></span><span><span>% Comissão${finTag}</span><strong>${fmtPct(pcShow)}</strong></span><span><span>Faturamento${finTag}</span><strong>${fmtBRL2(fatShow)}</strong></span></div>
+    ${npsScore||indCount?`<div style="display:flex;gap:8px;margin-top:4px">${npsScore}${indCount}</div>`:''}
+    ${buildFUStrip(card)}
+  </div>`;
+}
     
     function buildFUStrip(card){
       const today=todayStr();const pend=(card.followUps||[]).filter(f=>f.status==='pending');if(!pend.length)return'';
