@@ -1622,7 +1622,11 @@ function quickMove(cardId){
 }
 
 function updateMasterSummary(vis){
-  const fechados=(vis||state.cards).filter(c=>c.stageId==='fechado');
+  const stageFechado=state.stages.find(s=>s.id==='fechado');
+  let fechados=(vis||state.cards).filter(c=>c.stageId==='fechado');
+  if(!hasManualDateFilter()&&stageFechado){
+    fechados=fechados.filter(c=>isCurrentMonth(getStageEntryDate(c,stageFechado)));
+  }
   let b=0,l=0,f=0,cm=[];
   fechados.forEach(c=>{b+=parseFloat(c.premioBruto)||0;l+=parseFloat(c.premioLiquido)||0;f+=parseFloat(c.faturamento)||0;const p=parseFloat(c.percentComissao);if(!isNaN(p)&&p>0)cm.push(p);});
   const med=cm.length?cm.reduce((a,x)=>a+x,0)/cm.length:0;
@@ -1798,9 +1802,22 @@ function getDashCards(){
 
 function renderDashboard(){
   const cards=getDashCards();
+  const dashManualPeriod=!!(document.getElementById('dashDtIni').value||document.getElementById('dashDtFim').value);
+  const stageFechado=state.stages.find(s=>s.id==='fechado');
+  const stagePerdido=state.stages.find(s=>s.id==='perdido');
+  function countsAsFechado(c){
+    if(c.stageId!=='fechado')return false;
+    if(dashManualPeriod||!stageFechado)return true;
+    return isCurrentMonth(getStageEntryDate(c,stageFechado));
+  }
+  function countsAsPerdido(c){
+    if(c.stageId!=='perdido')return false;
+    if(dashManualPeriod||!stagePerdido)return true;
+    return isCurrentMonth(getStageEntryDate(c,stagePerdido));
+  }
   const active=cards.filter(c=>!['fechado','perdido'].includes(c.stageId));
-  const fechados=cards.filter(c=>c.stageId==='fechado');
-  const perdidos=cards.filter(c=>c.stageId==='perdido');
+  const fechados=cards.filter(countsAsFechado);
+  const perdidos=cards.filter(countsAsPerdido);
   const total=cards.length;
   const taxaConv=total>0?((fechados.length/total)*100).toFixed(1):0;
   let bruto=0,fat=0;fechados.forEach(c=>{bruto+=parseFloat(c.premioBruto)||0;fat+=parseFloat(c.faturamento)||0;});
@@ -1842,11 +1859,11 @@ function renderDashboard(){
   html+=`<div class="dash-section"><div class="dash-section-title">📊 Performance & Composição</div><div class="dash-grid-2">`;
 
   // Performance por usuário
-  const userMap={};
+const userMap={};
   cards.forEach(c=>{
     const r=c.responsavel||'—';if(!userMap[r])userMap[r]={total:0,fechados:0,perdidos:0,fat:0};
-    userMap[r].total++;if(c.stageId==='fechado'){userMap[r].fechados++;userMap[r].fat+=parseFloat(c.faturamento)||0;}
-    if(c.stageId==='perdido')userMap[r].perdidos++;
+    userMap[r].total++;if(countsAsFechado(c)){userMap[r].fechados++;userMap[r].fat+=parseFloat(c.faturamento)||0;}
+    if(countsAsPerdido(c))userMap[r].perdidos++;
   });
   const userRanked=Object.entries(userMap).sort((a,b)=>b[1].fechados-a[1].fechados);
   const uMax=Math.max(...userRanked.map(([,v])=>v.fechados),1);
