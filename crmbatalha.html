@@ -1226,8 +1226,7 @@ function parseBRNum(s){
     function buildFUStrip(card){
       const today=todayStr();const pend=(card.followUps||[]).filter(f=>f.status==='pending');if(!pend.length)return'';
       let h='<div class="card-fu-strip">';
-      pend.forEach(fu=>{const ov=fu.date<today;const d=diffDays(fu.date);const lbl=ov?`🔴 FU atrasado ${Math.abs(d||0)}d — ${isoToPt(fu.date)}`:`⏰ FU ${d===0?'hoje':d+'d'} — ${isoToPt(fu.date)}`;
-        h+=ov?`<div class="fu-card-badge fu-overdue-card"><span class="fu-overdue-dot"></span><span style="flex:1">${lbl}</span></div>`:`<div class="fu-card-badge fu-pending-card"><span class="fu-pending-dot"></span><span style="flex:1">${lbl}</span></div>`;});
+      pend.forEach(fu=>{const ov=fu.date<today;const d=diffDays(fu.date);const lbl=ov?`🔴 Follow Up atrasado ${Math.abs(d||0)}d — ${isoToPt(fu.date)}`:`⏰ Follow Up ${d===0?'hoje':d+'d'} — ${isoToPt(fu.date)}`;        h+=ov?`<div class="fu-card-badge fu-overdue-card"><span class="fu-overdue-dot"></span><span style="flex:1">${lbl}</span></div>`:`<div class="fu-card-badge fu-pending-card"><span class="fu-pending-dot"></span><span style="flex:1">${lbl}</span></div>`;});
       return h+'</div>';
     }
     
