@@ -465,9 +465,9 @@
     <div class="modal-body">
       <div class="form-grid">
         <div class="form-group full"><label>Seguradora Anterior</label><div class="input-with-btn"><select id="ra_seguradoraAnterior"><option value="">Selecione...</option></select><button class="btn btn-ghost btn-xs" onclick="openManageModal('seguradoras')">+</button></div></div>
-        <div class="form-group"><label>Prêmio Bruto Anterior (R$)</label><input id="ra_premioBrutoAnterior" type="number" step="0.01" placeholder="0,00" oninput="calcRenovAnt()"></div>
-        <div class="form-group"><label>Prêmio Líquido Anterior (R$)</label><input id="ra_premioLiquidoAnterior" type="number" step="0.01" placeholder="0,00" oninput="calcRenovAnt()"></div>
-        <div class="form-group"><label>% Comissão Anterior</label><input id="ra_percentComissaoAnterior" type="number" step="0.01" placeholder="0,00" oninput="calcRenovAnt()"></div>
+        <div class="form-group"><label>Prêmio Bruto Anterior (R$)</label><input id="ra_premioBrutoAnterior" type="text" inputmode="decimal" placeholder="0,00" oninput="calcRenovAnt()"></div>
+        <div class="form-group"><label>Prêmio Líquido Anterior (R$)</label><input id="ra_premioLiquidoAnterior" type="text" inputmode="decimal" placeholder="0,00" oninput="calcRenovAnt()"></div>
+        <div class="form-group"><label>% Comissão Anterior</label><input id="ra_percentComissaoAnterior" type="text" inputmode="decimal" placeholder="0,00" oninput="calcRenovAnt()"></div>
         <div class="form-group"><label>Faturamento Anterior — auto</label><input id="ra_faturamentoAnterior" readonly></div>
       </div>
     </div>
@@ -654,6 +654,15 @@
     function fmtBRL(v){return(parseFloat(v)||0).toLocaleString('pt-BR',{style:'currency',currency:'BRL',minimumFractionDigits:2,maximumFractionDigits:8});}
     function fmtBRL2(v){return(parseFloat(v)||0).toLocaleString('pt-BR',{style:'currency',currency:'BRL',minimumFractionDigits:2,maximumFractionDigits:2});}
     function fmtPct(v){return(parseFloat(v)||0).toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2})+'%';}
+function fmtNumBR(v){return(parseFloat(v)||0).toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2});}
+function parseBRNum(s){
+  if(s===null||s===undefined)return 0;
+  s=String(s).trim();if(!s)return 0;
+  s=s.replace(/[^\d.,\-]/g,'');
+  if(s.includes(',')&&s.includes('.')){s=s.replace(/\./g,'').replace(',','.');}
+  else if(s.includes(',')){s=s.replace(',','.');}
+  const n=parseFloat(s);return isNaN(n)?0:n;
+}
     function fmtDateTime(ts){if(!ts)return'';return new Date(ts).toLocaleString('pt-BR',{day:'2-digit',month:'2-digit',year:'numeric',hour:'2-digit',minute:'2-digit',second:'2-digit'});}
     function inDateRange(dateStr,ini,fim){if(!dateStr)return(!ini&&!fim);if(ini&&dateStr<ini)return false;if(fim&&dateStr>fim)return false;return true;}
     function inDateRange(dateStr,ini,fim){if(!dateStr)return(!ini&&!fim);if(ini&&dateStr<ini)return false;if(fim&&dateStr>fim)return false;return true;}
@@ -1447,24 +1456,24 @@ function openRenovAntModal(){
   const segOpts=state.seguradoras.map(s=>`<option value="${s}" ${s===curCard.seguradoraAnterior?'selected':''}>${s}</option>`).join('');
   document.getElementById('ra_seguradoraAnterior').innerHTML=`<option value="">Selecione...</option>${segOpts}`;
   document.getElementById('ra_seguradoraAnterior').value=curCard.seguradoraAnterior||'';
-  document.getElementById('ra_premioBrutoAnterior').value=curCard.premioBrutoAnterior||'';
-  document.getElementById('ra_premioLiquidoAnterior').value=curCard.premioLiquidoAnterior||'';
-  document.getElementById('ra_percentComissaoAnterior').value=curCard.percentComissaoAnterior||'';
+  document.getElementById('ra_premioBrutoAnterior').value=curCard.premioBrutoAnterior?fmtNumBR(curCard.premioBrutoAnterior):'';
+  document.getElementById('ra_premioLiquidoAnterior').value=curCard.premioLiquidoAnterior?fmtNumBR(curCard.premioLiquidoAnterior):'';
+  document.getElementById('ra_percentComissaoAnterior').value=curCard.percentComissaoAnterior?fmtNumBR(curCard.percentComissaoAnterior):'';
   calcRenovAnt();
   document.getElementById('renovAntModalOverlay').classList.remove('hidden');
 }
 function closeRenovAntModal(){document.getElementById('renovAntModalOverlay').classList.add('hidden');}
 function calcRenovAnt(){
-  const pl=parseFloat(document.getElementById('ra_premioLiquidoAnterior')?.value)||0;
-  const pc=parseFloat(document.getElementById('ra_percentComissaoAnterior')?.value)||0;
+  const pl=parseBRNum(document.getElementById('ra_premioLiquidoAnterior')?.value);
+  const pc=parseBRNum(document.getElementById('ra_percentComissaoAnterior')?.value);
   const e=document.getElementById('ra_faturamentoAnterior');if(e)e.value=fmtBRL(pl*pc/100);
 }
 function saveRenovAntModal(){
   if(!curCard)return;
   curCard.seguradoraAnterior=document.getElementById('ra_seguradoraAnterior').value;
-  curCard.premioBrutoAnterior=parseFloat(document.getElementById('ra_premioBrutoAnterior').value)||0;
-  curCard.premioLiquidoAnterior=parseFloat(document.getElementById('ra_premioLiquidoAnterior').value)||0;
-  curCard.percentComissaoAnterior=parseFloat(document.getElementById('ra_percentComissaoAnterior').value)||0;
+  curCard.premioBrutoAnterior=parseBRNum(document.getElementById('ra_premioBrutoAnterior').value);
+  curCard.premioLiquidoAnterior=parseBRNum(document.getElementById('ra_premioLiquidoAnterior').value);
+  curCard.percentComissaoAnterior=parseBRNum(document.getElementById('ra_percentComissaoAnterior').value);
   curCard.faturamentoAnterior=Math.round((curCard.premioLiquidoAnterior*curCard.percentComissaoAnterior/100)*100)/100;
   curCard.updatedAt=nowISO();
   closeRenovAntModal();
