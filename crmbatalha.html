@@ -636,6 +636,22 @@ function fmtBRL2(v){return(parseFloat(v)||0).toLocaleString('pt-BR',{style:'curr
 function fmtPct(v){return(parseFloat(v)||0).toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2})+'%';}
 function fmtDateTime(ts){if(!ts)return'';return new Date(ts).toLocaleString('pt-BR',{day:'2-digit',month:'2-digit',year:'numeric',hour:'2-digit',minute:'2-digit',second:'2-digit'});}
 function inDateRange(dateStr,ini,fim){if(!dateStr)return(!ini&&!fim);if(ini&&dateStr<ini)return false;if(fim&&dateStr>fim)return false;return true;}
+function inDateRange(dateStr,ini,fim){if(!dateStr)return(!ini&&!fim);if(ini&&dateStr<ini)return false;if(fim&&dateStr>fim)return false;return true;}
+
+function getStageEntryDate(card,stage){
+  const mh=card.migrationHistory||[];
+  for(let i=mh.length-1;i>=0;i--){if(mh[i].to===stage.name)return mh[i].at;}
+  return card.updatedAt||card.createdAt||'';
+}
+function isCurrentMonth(iso){
+  if(!iso)return false;
+  const d=new Date(iso),n=new Date();
+  return d.getFullYear()===n.getFullYear()&&d.getMonth()===n.getMonth();
+}
+function hasManualDateFilter(){
+  return ['filterDtLancIni','filterDtLancFim','filterDtVigIni','filterDtVigFim','filterDtVencIni','filterDtVencFim']
+    .some(id=>document.getElementById(id)?.value);
+}
 
 function showToast(msg,duration=4000){
   const old=document.getElementById('syncToast');if(old)old.remove();
@@ -1119,8 +1135,12 @@ function getVisibleCards(){
 function renderBoard(){
   updateFilterOptions();const board=document.getElementById('board');if(!board)return;
   board.innerHTML='';const vis=getVisibleCards();
+  const skipMonthLock=hasManualDateFilter();
   [...state.stages].sort((a,b)=>a.order-b.order).forEach(stage=>{
-    const cards=vis.filter(c=>c.stageId===stage.id);
+    let cards=vis.filter(c=>c.stageId===stage.id);
+    if(!skipMonthLock&&(stage.id==='fechado'||stage.id==='perdido')){
+      cards=cards.filter(c=>isCurrentMonth(getStageEntryDate(c,stage)));
+    }
     const col=document.createElement('div');col.className='col';col.dataset.stageId=stage.id;
     col.innerHTML=buildColHTML(stage,cards);setupColDrop(col,stage);board.appendChild(col);
   });
@@ -1143,18 +1163,16 @@ function buildTotals(stage,cards){
 
 function buildCardHTML(card,stage){
   const tc=TEMP_CFG[card.temperatura]||{bg:'#1e293b',color:'#94a3b8',emoji:''};
-  const mH=(card.migrationHistory||[]).slice(-2).map(m=>`<span class="migration-badge">${m.from}<span class="arr">→</span>${m.to}</span>`).join('');
   const tags=(card.tags||[]).slice(0,2).map(t=>`<span class="badge badge-tag">${t}</span>`).join('');
   const npsScore=card.npsEntries&&card.npsEntries.length>0?`<span style="font-size:.68rem;color:var(--yellow);font-weight:700">⭐ NPS ${card.npsEntries[card.npsEntries.length-1].nota}</span>`:'';
   const indCount=(card.indicacoes||[]).length>0?`<span style="font-size:.68rem;color:var(--green);font-weight:700">🤝 ${card.indicacoes.length} indicação(ões)</span>`:'';
-  return `<div class="kanban-card" id="card-${card.id}" draggable="true" ondragstart="onDragStart(event,'${card.id}')" ondragend="onDragEnd(event)">
+  return `<div class="kanban-card" id="card-${card.id}" draggable="true" ondragstart="onDragStart(event,'${card.id}')" ondragend="onDragEnd(event)" onclick="openEditCard('${card.id}')">
     ${buildNeonAlerts(card,stage)}
     <div class="card-top"><div class="card-color-bar" style="background:${card.color||stage.color}"></div><div class="card-info"><div class="card-name">${card.nome||'Sem nome'}</div><div class="card-sub">${card.responsavel||''} • ${card.seguradora||''}</div></div></div>
     <div class="card-badges">${card.tipo?`<span class="badge badge-type">${card.tipo}</span>`:''}${card.temperatura?`<span class="badge-temp badge" style="background:${tc.bg};color:${tc.color}">${tc.emoji} ${card.temperatura}</span>`:''}${card.ramo?`<span class="badge badge-tag">${card.ramo}</span>`:''}${tags}</div>
     <div class="card-financials"><span><span>Prêmio Bruto</span><strong>${fmtBRL2(card.premioBruto)}</strong></span><span><span>% Comissão</span><strong>${fmtPct(card.percentComissao)}</strong></span><span><span>Faturamento</span><strong>${fmtBRL2(card.faturamento)}</strong></span></div>
     ${npsScore||indCount?`<div style="display:flex;gap:8px;margin-top:4px">${npsScore}${indCount}</div>`:''}
-    ${buildFUStrip(card)}${mH?`<div style="display:flex;gap:3px;flex-wrap:wrap;margin-top:5px">${mH}</div>`:''}
-    <div class="card-actions"><button class="btn btn-ghost btn-xs" onclick="openEditCard('${card.id}')">✏️ Editar</button><button class="btn btn-ghost btn-xs" onclick="quickMove('${card.id}')">➡️ Mover</button></div>
+    ${buildFUStrip(card)}
   </div>`;
 }
 
