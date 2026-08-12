@@ -658,9 +658,16 @@ function fmtNumBR(v){return(parseFloat(v)||0).toLocaleString('pt-BR',{minimumFra
 function parseBRNum(s){
   if(s===null||s===undefined)return 0;
   s=String(s).trim();if(!s)return 0;
-  s=s.replace(/[^\d.,\-]/g,'');
-  if(s.includes(',')&&s.includes('.')){s=s.replace(/\./g,'').replace(',','.');}
-  else if(s.includes(',')){s=s.replace(',','.');}
+  s=s.replace(/[^\d.,\-]/g,'');if(!s)return 0;
+  const lastComma=s.lastIndexOf(','),lastDot=s.lastIndexOf('.');
+  if(lastComma>-1&&lastDot>-1){
+    if(lastComma>lastDot){s=s.replace(/\./g,'').replace(',','.');} // 1.536,36 (BR)
+    else{s=s.replace(/,/g,'');} // 1,536.36 (US/Excel)
+  }else if(lastComma>-1){
+    const parts=s.split(',');
+    if(parts.length===2&&parts[1].length<=2){s=s.replace(',','.');} // 1536,36
+    else{s=s.replace(/,/g,'');} // 1,536 (milhar)
+  }
   const n=parseFloat(s);return isNaN(n)?0:n;
 }
     function fmtDateTime(ts){if(!ts)return'';return new Date(ts).toLocaleString('pt-BR',{day:'2-digit',month:'2-digit',year:'numeric',hour:'2-digit',minute:'2-digit',second:'2-digit'});}
@@ -1780,7 +1787,7 @@ function gerarPlanilha(){
           const g=idx=>{const v=row[idx];if(v===null||v===undefined)return'';if(v instanceof Date)return'';return String(v).trim();};
           const gRaw=idx=>{const v=row[idx];if(v===null||v===undefined)return'';return v;};
           const nome=g(0);if(!nome){erroLinhas.push(rowIdx+2);return;}
-          const parsNum=s=>{if(!s)return 0;const n=parseFloat(String(s).replace(/[^\d.,\-]/g,'').replace(',','.'));return isNaN(n)?0:n;};
+          const parsNum=s=>parseBRNum(s);
 const pb=parsNum(g(11)),pc=parsNum(g(12)),iof=pb*0.06872,pl=Math.round((pb-iof)*100)/100,fat=Math.round((pl*pc/100)*100)/100;
       const pbAnt=parsNum(g(18)),plAnt=parsNum(g(19)),pcAnt=parsNum(g(20)),fatAnt=Math.round((plAnt*pcAnt/100)*100)/100;
       const addIfNew=(key,val)=>{if(key==='responsaveis')return;if(val&&!state[key].includes(val))state[key].push(val);};
