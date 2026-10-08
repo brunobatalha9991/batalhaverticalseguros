@@ -371,6 +371,7 @@
           <button class="btn btn-success btn-sm" onclick="gerarPlanilha()">📊 Planilha</button>
           <button class="btn btn-primary btn-sm" onclick="openImportModal()">📂 Imp. Renov.</button>
           <button class="btn btn-ghost btn-sm" id="btnToggleMS" onclick="toggleMasterSummary()" title="Mostrar/ocultar totalizador geral">🙈 Totais</button>
+          <button class="btn btn-ghost btn-sm" id="btnToggleFilters" onclick="toggleFilterBar()" title="Mostrar/ocultar filtros">🙈 Filtros</button>
           <button class="btn btn-danger btn-sm" onclick="doLogout()" id="btnSair">Sair</button>
         </div>
       </div>
@@ -385,7 +386,7 @@
         <div class="ms-divider"></div>
         <div class="ms-item"><div class="ms-label">Média Comissão</div><div class="ms-value" style="color:var(--accent)" id="ms-comissao">0,00%</div></div>
       </div>
-      <div class="filter-bar">
+        <div class="filter-bar" id="filterBar">
         <input type="text" class="search-input" id="searchBar" placeholder="🔍 Buscar cliente..." oninput="renderBoard()">
         <label>Responsável:</label>
         <select id="filterResp" onchange="renderBoard()"><option value="">Todos</option></select>
@@ -1216,6 +1217,28 @@ function parseBRNum(s){
           const btn=document.getElementById('btnToggleMS');
           if(el)el.classList.add('tot-hidden');
           if(btn)btn.textContent='👁 Totais';
+        }
+      }catch(e){}
+    })();
+    
+    // ═══ Mostrar/ocultar filtros ═══
+    function toggleFilterBar(){
+      const el=document.getElementById('filterBar');
+      const btn=document.getElementById('btnToggleFilters');
+      if(!el)return;
+      const hid=!el.classList.contains('tot-hidden');
+      el.classList.toggle('tot-hidden',hid);
+      if(btn)btn.textContent=hid?'👁 Filtros':'🙈 Filtros';
+      try{localStorage.setItem('crm_filters_hidden',hid?'1':'0');}catch(e){}
+    }
+
+    (function initFilterBarVisibility(){
+      try{
+        if(localStorage.getItem('crm_filters_hidden')==='1'){
+          const el=document.getElementById('filterBar');
+          const btn=document.getElementById('btnToggleFilters');
+          if(el)el.classList.add('tot-hidden');
+          if(btn)btn.textContent='👁 Filtros';
         }
       }catch(e){}
     })();
