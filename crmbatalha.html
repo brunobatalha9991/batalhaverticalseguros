@@ -106,7 +106,10 @@
     .fu-overdue-dot{width:7px;height:7px;border-radius:50%;background:var(--neon-red);box-shadow:0 0 6px var(--neon-red),0 0 12px var(--neon-red);flex-shrink:0;animation:neon-pulse 1s ease-in-out infinite alternate}
     .fu-pending-dot{width:7px;height:7px;border-radius:50%;background:var(--accent);flex-shrink:0}
     .card-actions{display:flex;gap:4px;margin-top:6px}
-    .neon-alert{position:absolute;top:-9px;right:8px;padding:2px 8px;border-radius:20px;font-size:.63rem;font-weight:800;letter-spacing:.04em;animation:neon-pulse 1.4s ease-in-out infinite alternate;z-index:10;pointer-events:none}
+    .neon-alerts{position:absolute;top:-9px;left:8px;right:8px;display:flex;justify-content:flex-end;align-items:center;gap:5px;row-gap:3px;flex-wrap:wrap;z-index:10;pointer-events:none}
+    .neon-alert{padding:2px 8px;border-radius:20px;font-size:.63rem;font-weight:800;letter-spacing:.04em;white-space:nowrap;animation:neon-pulse 1.4s ease-in-out infinite alternate}
+    .neon-fu-pend{background:#1d4ed8;color:#fff;box-shadow:0 0 8px #3b82f6,0 0 16px #3b82f6}
+    .neon-fu-atr{background:#b91c1c;color:#fff;box-shadow:0 0 8px #ff2d55,0 0 18px #ff2d55}
     .neon-venc-5{background:#ff6b00;color:#fff;box-shadow:0 0 8px #ff6b00,0 0 18px #ff6b00}
     .neon-venc-3{background:#ff2d55;color:#fff;box-shadow:0 0 8px #ff2d55,0 0 18px #ff2d55}
     .neon-venc-0{background:#ff0000;color:#fff;box-shadow:0 0 10px #ff0000,0 0 24px #ff0000}
@@ -1281,21 +1284,21 @@ return `<div class="col-header"><div class="col-title-row"><div class="col-dot" 
     <div class="card-badges">${card.tipo?`<span class="badge badge-type">${card.tipo}</span>`:''}${card.temperatura?`<span class="badge-temp badge" style="background:${tc.bg};color:${tc.color}">${tc.emoji} ${card.temperatura}</span>`:''}${card.ramo?`<span class="badge badge-tag">${card.ramo}</span>`:''}${tags}</div>
     <div class="card-financials"><span><span>Prêmio Bruto</span><strong>${fmtBRL2(pbShow)}</strong></span><span><span>% Comissão</span><strong>${fmtPct(pcShow)}</strong></span><span><span>Faturamento</span><strong>${fmtBRL2(fatShow)}</strong></span></div>
     ${npsScore||indCount?`<div style="display:flex;gap:8px;margin-top:4px">${npsScore}${indCount}</div>`:''}
-    ${buildFUStrip(card)}
   </div>`;
 }
     
-    function buildFUStrip(card){
-      const today=todayStr();const pend=(card.followUps||[]).filter(f=>f.status==='pending');if(!pend.length)return'';
-      let h='<div class="card-fu-strip">';
-      pend.forEach(fu=>{const ov=fu.date<today;const d=diffDays(fu.date);const lbl=ov?`🔴 Follow Up atrasado ${Math.abs(d||0)}d — ${isoToPt(fu.date)}`:`⏰ Follow Up ${d===0?'hoje':d+'d'} — ${isoToPt(fu.date)}`;        h+=ov?`<div class="fu-card-badge fu-overdue-card"><span class="fu-overdue-dot"></span><span style="flex:1">${lbl}</span></div>`:`<div class="fu-card-badge fu-pending-card"><span class="fu-pending-dot"></span><span style="flex:1">${lbl}</span></div>`;});
-      return h+'</div>';
+    function buildFUAlert(card){
+      const today=todayStr();const pend=(card.followUps||[]).filter(f=>f.status==='pending').sort((a,b)=>a.date<b.date?-1:a.date>b.date?1:0);if(!pend.length)return'';
+      const fu=pend[0];const ov=fu.date<today;const d=diffDays(fu.date);const extra=pend.length>1?` +${pend.length-1}`:'';
+      const lbl=ov?`🔴 FOLLOW UP ATRASADO ${Math.abs(d||0)}d`:`⏰ FOLLOW UP ${d===0?'HOJE':d+'d'}`;
+      return `<div class="neon-alert ${ov?'neon-fu-atr':'neon-fu-pend'}">${lbl}${extra}</div>`;
     }
     
     function buildNeonAlerts(card,stage){
-      let h='',idx=0;const top=()=>{const t=idx===0?'-9px':`${idx*20-9}px`;idx++;return t;};
-      if(!NO_VENC_ALERT.includes(stage.id)&&card.vencimentoApolice){const d=diffDays(card.vencimentoApolice);if(d!==null){let cls='',lbl='';if(d<0){cls='neon-vencido';lbl=`⚠️ VENCIDA ${Math.abs(d)}d`;}else if(d===0){cls='neon-venc-0';lbl='🔴 VENCE HOJE';}else if(d<=3){cls='neon-venc-3';lbl=`🔴 ${d}d p/vencer`;}else if(d<=5){cls='neon-venc-5';lbl=`🟠 ${d}d p/vencer`;}if(cls)h+=`<div class="neon-alert ${cls}" style="top:${top()}">${lbl}</div>`;}}
-      if(!NO_INATIVO.includes(stage.id)){const in1=daysSince(card.ultimaInteracao);if(in1>=1)h+=`<div class="neon-alert neon-inativo" style="top:${top()}">💤 ${in1}d inativo</div>`;}
+      let items=buildFUAlert(card);
+      if(!NO_VENC_ALERT.includes(stage.id)&&card.vencimentoApolice){const d=diffDays(card.vencimentoApolice);if(d!==null){let cls='',lbl='';if(d<0){cls='neon-vencido';lbl=`⚠️ VENCIDA ${Math.abs(d)}d`;}else if(d===0){cls='neon-venc-0';lbl='🔴 VENCE HOJE';}else if(d<=3){cls='neon-venc-3';lbl=`🔴 ${d}d p/vencer`;}else if(d<=5){cls='neon-venc-5';lbl=`🟠 ${d}d p/vencer`;}if(cls)items+=`<div class="neon-alert ${cls}">${lbl}</div>`;}}
+      if(!NO_INATIVO.includes(stage.id)){const in1=daysSince(card.ultimaInteracao);if(in1>=1)items+=`<div class="neon-alert neon-inativo">💤 ${in1}d inativo</div>`;}
+      let h=items?`<div class="neon-alerts">${items}</div>`:'';
       if(stage.id==='agendamento'&&card.dataAgendamento){const d=diffDays(card.dataAgendamento);if(d!==null&&d>=0&&d<=5)h+=`<div class="ag-rem-alert">📅 ${d===0?'Hoje':d+'d'}</div>`;}
       return h;
     }
