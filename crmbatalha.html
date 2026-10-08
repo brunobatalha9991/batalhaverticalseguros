@@ -1185,6 +1185,9 @@ function parseBRNum(s){
         if(!skipMonthLock&&(stage.id==='fechado'||stage.id==='perdido')){
           cards=cards.filter(c=>isCurrentMonth(getStageEntryDate(c,stage)));
         }
+        if(stage.id==='renovacao'){
+          cards=[...cards].sort((a,b)=>{const va=a.vencimentoApolice||'',vb=b.vencimentoApolice||'';if(!va&&!vb)return 0;if(!va)return 1;if(!vb)return -1;return va<vb?-1:va>vb?1:0;});
+        }
         const col=document.createElement('div');col.className='col';col.dataset.stageId=stage.id;
         col.innerHTML=buildColHTML(stage,cards);setupColDrop(col,stage);board.appendChild(col);
       });
