@@ -287,6 +287,8 @@
       .dash-kpi-row{grid-template-columns:1fr 1fr}
       .form-grid-3{grid-template-columns:1fr 1fr}
     }
+    .tot-hidden{display:none!important}
+    .btn-tot-toggle{padding:3px 6px;font-size:.72rem;line-height:1}
     </style>
     </head>
     <body>
@@ -368,10 +370,11 @@
           <button class="btn btn-ghost btn-sm" onclick="importJSON()">📥 Importar</button>
           <button class="btn btn-success btn-sm" onclick="gerarPlanilha()">📊 Planilha</button>
           <button class="btn btn-primary btn-sm" onclick="openImportModal()">📂 Imp. Renov.</button>
+          <button class="btn btn-ghost btn-sm" id="btnToggleMS" onclick="toggleMasterSummary()" title="Mostrar/ocultar totalizador geral">🙈 Totais</button>
           <button class="btn btn-danger btn-sm" onclick="doLogout()" id="btnSair">Sair</button>
         </div>
       </div>
-      <div class="master-summary">
+     <div class="master-summary" id="masterSummary">
         <div class="ms-item"><div class="ms-label">Prêmio Bruto (Fechados)</div><div class="ms-value" style="color:var(--green)" id="ms-bruto">R$ 0,00</div></div>
         <div class="ms-divider"></div>
         <div class="ms-item"><div class="ms-label">Prêmio Líquido (Fechados)</div><div class="ms-value" style="color:var(--accent)" id="ms-liquido">R$ 0,00</div></div>
@@ -1183,11 +1186,47 @@ function parseBRNum(s){
       });
       updateMasterSummary(vis);
     }
+     // ═══ Mostrar/ocultar totalizadores ═══
+    let hiddenTotals={};
+    try{hiddenTotals=JSON.parse(localStorage.getItem('crm_tot_hidden')||'{}')||{};}catch(e){hiddenTotals={};}
+
+    function toggleStageTotals(stageId){
+      hiddenTotals[stageId]=!hiddenTotals[stageId];
+      try{localStorage.setItem('crm_tot_hidden',JSON.stringify(hiddenTotals));}catch(e){}
+      const box=document.getElementById('tot-'+stageId);
+      const btn=document.getElementById('btn-tot-'+stageId);
+      if(box)box.classList.toggle('tot-hidden',!!hiddenTotals[stageId]);
+      if(btn)btn.textContent=hiddenTotals[stageId]?'👁':'🙈';
+    }
+
+    function toggleMasterSummary(){
+      const el=document.getElementById('masterSummary');
+      const btn=document.getElementById('btnToggleMS');
+      if(!el)return;
+      const hid=!el.classList.contains('tot-hidden');
+      el.classList.toggle('tot-hidden',hid);
+      if(btn)btn.textContent=hid?'👁 Totais':'🙈 Totais';
+      try{localStorage.setItem('crm_ms_hidden',hid?'1':'0');}catch(e){}
+    }
+
+    (function initTotalsVisibility(){
+      try{
+        if(localStorage.getItem('crm_ms_hidden')==='1'){
+          const el=document.getElementById('masterSummary');
+          const btn=document.getElementById('btnToggleMS');
+          if(el)el.classList.add('tot-hidden');
+          if(btn)btn.textContent='👁 Totais';
+        }
+      }catch(e){}
+    })();
     
     function buildColHTML(stage,cards){
   const tot=stage.id==='renovacao'?buildTotalsAnterior(stage,cards):(stage.hasTotals?buildTotals(stage,cards):'');
-      const addBtn=stage.canAdd?`<button class="btn btn-ghost btn-xs" onclick="openNewCard('${stage.id}')">+ Card</button>`:`<span style="font-size:.68rem;color:var(--text3)">← Mover</span>`;
-      return `<div class="col-header"><div class="col-title-row"><div class="col-dot" style="background:${stage.color}"></div><span class="col-title">${stage.name}</span><span class="col-badge">${cards.length}</span><div class="col-actions">${addBtn}<button class="btn btn-ghost btn-xs" onclick="openDelStage('${stage.id}')">🗑</button></div></div>${tot}</div>
+const addBtn=stage.canAdd?`<button class="btn btn-ghost btn-xs" onclick="openNewCard('${stage.id}')">+ Card</button>`:`<span style="font-size:.68rem;color:var(--text3)">← Mover</span>`;
+const totHidden=!!tot&&!!hiddenTotals[stage.id];
+const totBtn=tot?`<button class="btn btn-ghost btn-xs btn-tot-toggle" id="btn-tot-${stage.id}" onclick="toggleStageTotals('${stage.id}')" title="Mostrar/ocultar totalizador">${totHidden?'👁':'🙈'}</button>`:'';
+const totWrap=tot?`<div id="tot-${stage.id}" class="${totHidden?'tot-hidden':''}">${tot}</div>`:'';
+return `<div class="col-header"><div class="col-title-row"><div class="col-dot" style="background:${stage.color}"></div><span class="col-title">${stage.name}</span><span class="col-badge">${cards.length}</span><div class="col-actions">${addBtn}${totBtn}<button class="btn btn-ghost btn-xs" onclick="openDelStage('${stage.id}')">🗑</button></div></div>${totWrap}</div>
       <div class="col-body" id="col-body-${stage.id}">${cards.length===0?`<div class="no-cards-hint">${stage.canAdd?'+ Adicione um card':'Mova cards para cá'}</div>`:cards.map(c=>buildCardHTML(c,stage)).join('')}<div class="col-drop-hint">Soltar aqui</div></div>`;
     }
     
