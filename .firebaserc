@@ -1,0 +1,8 @@
+{
+  "projects": { "default": "gc---vertical-seguros" },
+  "targets": {
+    "gc---vertical-seguros": {
+      "hosting": { "crm": ["crm-vertical-seguros"] }
+    }
+  }
+}

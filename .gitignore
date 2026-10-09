@@ -1,0 +1,4 @@
+.firebase/
+site/
+*.log
+migracao/dados/

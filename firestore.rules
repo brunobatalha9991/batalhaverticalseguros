@@ -1,0 +1,85 @@
+rules_version = '2';
+
+// Base de uma corretora: nome, CPF, prêmio e comissão de clientes reais.
+// A regra é a mais fechada que existe — só o dono da conta entra, e só
+// depois de autenticado. A única exceção é o retrato do Painel do CEO, mais
+// abaixo: números consolidados, lidos pelo link sem senha — nunca dado de
+// cliente.
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Todo o sistema vive sob o documento do próprio usuário. Um id que não
+    // seja o de quem está logado não passa daqui.
+    match /usuarios/{uid}/{documento=**} {
+      allow read, write: if request.auth != null && request.auth.uid == uid;
+    }
+
+    // Painel do CEO: o retrato que o link sem senha mostra. Traz só números
+    // consolidados da vertical e nomes de vendedores. Quem tem o endereço lê
+    // um documento; ninguém lista a coleção, e o token tem 48 caracteres
+    // aleatórios. Gravar, trocar e apagar, só o dono autenticado.
+    function retratoDoDono(d) {
+      return request.auth != null
+        && d.dono == request.auth.uid
+        && d.keys().hasOnly(['dono', 'retrato', 'sha', 'atualizado'])
+        && d.retrato is string
+        && d.retrato.size() < 300000;
+    }
+
+    match /ceo/{token} {
+      allow get: if token.size() >= 32;
+      allow create: if retratoDoDono(request.resource.data);
+      allow update: if request.auth != null
+                    && resource.data.dono == request.auth.uid
+                    && retratoDoDono(request.resource.data);
+      allow delete: if request.auth != null
+                    && (resource == null || resource.data.dono == request.auth.uid);
+    }
+
+    // ══════════════════════════════════════════════════════════════════
+    // CRM - Vertical Seguros (coleções crm_*). Bloco ADITIVO: não altera
+    // nada acima. Todo usuário do CRM precisa de um perfil ativo em
+    // crm_usuarios/{uid}; só administradores gerenciam perfis.
+    // ══════════════════════════════════════════════════════════════════
+    function crmPerfilExiste() {
+      return request.auth != null
+        && exists(/databases/$(database)/documents/crm_usuarios/$(request.auth.uid));
+    }
+    function crmPerfil() {
+      return get(/databases/$(database)/documents/crm_usuarios/$(request.auth.uid)).data;
+    }
+    function crmAtivo() {
+      return crmPerfilExiste() && crmPerfil().active == true;
+    }
+    function crmAdmin() {
+      return crmAtivo() && crmPerfil().role == 'admin';
+    }
+
+    match /crm_usuarios/{uid} {
+      // Cada um lê o próprio perfil (para saber se está ativo); admin lê e lista todos.
+      allow get: if request.auth != null && (request.auth.uid == uid || crmAdmin());
+      allow list: if crmAdmin();
+      // Auto-cadastro: só o próprio uid, sempre inativo e como usuário comum.
+      allow create: if request.auth != null && request.auth.uid == uid
+                    && request.resource.data.active == false
+                    && request.resource.data.role == 'user'
+                    && request.resource.data.email == request.auth.token.email;
+      // Admin cria, ativa, troca perfil e remove.
+      allow create, update, delete: if crmAdmin();
+    }
+
+    match /crm_cards/{id} {
+      allow read, write: if crmAtivo();
+    }
+
+    match /crm_config/{id} {
+      allow read, write: if crmAtivo();
+    }
+
+    // Qualquer outro caminho fica trancado, inclusive para quem está logado:
+    // o que não foi previsto não deve ser gravável por acidente.
+    match /{documento=**} {
+      allow read, write: if false;
+    }
+  }
+}

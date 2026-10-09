@@ -4,6 +4,9 @@
     <meta charset="UTF-8"/>
     <meta name="viewport" content="width=device-width,initial-scale=1.0"/>
     <title>CRM Corretora de Seguros</title>
+    <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore-compat.js"></script>
     <script src="https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js"></script>
     <style>
     :root{
@@ -298,7 +301,7 @@
     <body>
     <div id="oauthLoadingScreen" class="oauth-loading" style="display:none">
       <div class="oauth-spinner"></div>
-      <div style="color:var(--text2);font-size:.9rem" id="oauthLoadingMsg">Conectando ao Google Drive...</div>
+      <div style="color:var(--text2);font-size:.9rem" id="oauthLoadingMsg">Conectando ao servidor...</div>
     </div>
     
     <!-- LOGIN -->
@@ -309,14 +312,8 @@
           <p>Gestão de Negócios</p>
         </div>
         <div class="prelogin-drive-panel" id="preloginDrivePanel">
-          <div class="prelogin-drive-title">☁️ Google Drive — Sincronização</div>
-          <div class="prelogin-drive-status" id="preloginDriveStatus">Todos os dados são salvos exclusivamente no Google Drive.</div>
-          <div id="preloginDriveActions" style="margin-top:8px">
-            <button class="btn btn-drive btn-sm" onclick="startOAuthRedirect('prelogin')">
-              <svg width="14" height="14" viewBox="0 0 87.3 78" style="flex-shrink:0"><path fill="#0066da" d="M6.6 66.85l3.85 6.65c.8 1.4 1.95 2.5 3.3 3.3l13.75-23.8H14.9c-2.8 0-5.4.75-7.65 2.05z"/><path fill="#00ac47" d="M43.65 25L29.9 1.2c-1.35.8-2.5 1.9-3.3 3.3L3.35 44.5c-.8 1.4-1.2 2.95-1.2 4.55h27.5z"/><path fill="#ea4335" d="M73.55 76.8c1.35-.8 2.5-1.9 3.3-3.3l1.6-2.75 7.65-13.25c.8-1.4 1.2-2.95 1.2-4.55H59.8l5.85 11.2z"/><path fill="#00832d" d="M43.65 25L57.4 1.2C56.05.4 54.5 0 52.9 0H34.4c-1.6 0-3.15.45-4.5 1.2z"/><path fill="#2684fc" d="M59.8 53H32.5L18.75 76.8c1.35.8 2.9 1.2 4.5 1.2h43c1.6 0 3.15-.45 4.5-1.2z"/><path fill="#ffba00" d="M73.4 26.5l-12.25-21.2c-.8-1.4-1.95-2.5-3.3-3.3L43.65 25l16.15 28H87.3c0-1.6-.4-3.15-1.2-4.55z"/></svg>
-              Conectar com Google Drive
-            </button>
-          </div>
+          <div class="prelogin-drive-title">☁️ Nuvem — Sincronização automática</div>
+          <div class="prelogin-drive-status" id="preloginDriveStatus">Os dados ficam salvos na nuvem (Firebase) e sincronizam em tempo real entre os usuários.</div>
         </div>
         <div class="login-tabs">
           <button class="login-tab active" onclick="switchLoginTab('login')">Entrar</button>
@@ -333,7 +330,8 @@
             <label>Senha</label>
             <input type="password" id="loginPass" placeholder="••••••" onkeydown="if(event.key==='Enter')doLogin()">
           </div>
-          <button class="btn btn-primary" style="width:100%;justify-content:center;padding:10px" onclick="doLogin()">Entrar →</button>
+          <button class="btn btn-primary" style="width:100%;justify-content:center;padding:10px" id="btnLogin" onclick="doLogin()">Entrar →</button>
+          <div style="text-align:center;margin-top:12px"><a href="#" onclick="doForgotPass();return false;" style="font-size:.78rem;color:var(--text2)">Esqueci minha senha</a></div>
         </div>
         <div id="registerForm" style="display:none">
           <div class="info-banner">ℹ️ Novos cadastros aguardam ativação pelo administrador.</div>
@@ -341,7 +339,7 @@
           <div class="form-group" style="margin-bottom:10px"><label>E-mail <span class="req">*</span></label><input type="email" id="regEmail" placeholder="seu@email.com"></div>
           <div class="form-group" style="margin-bottom:10px"><label>Senha <span class="req">*</span></label><input type="password" id="regPass" placeholder="••••••"></div>
           <div class="form-group" style="margin-bottom:18px"><label>Confirmar Senha <span class="req">*</span></label><input type="password" id="regPass2" placeholder="••••••" onkeydown="if(event.key==='Enter')doRegister()"></div>
-          <button class="btn btn-success" style="width:100%;justify-content:center;padding:10px" onclick="doRegister()">Solicitar Cadastro →</button>
+          <button class="btn btn-success" style="width:100%;justify-content:center;padding:10px" id="btnRegister" onclick="doRegister()">Solicitar Cadastro →</button>
         </div>
       </div>
     </div>
@@ -359,11 +357,11 @@
           <div style="display:flex;flex-direction:column;align-items:flex-end;gap:2px">
             <div id="driveBadge" class="drive-badge drive-connected">
               <span class="sync-dot sync-dot-green" id="syncDot"></span>
-              <span id="driveLabel">Drive: conectado</span>
+              <span id="driveLabel">Nuvem: conectado</span>
             </div>
             <span class="last-sync-label" id="lastSyncLabel" style="display:none"></span>
           </div>
-          <button id="btnDriveConnect" class="btn btn-drive btn-sm" onclick="driveSyncNow()">☁️ Sincronizar</button>
+          <button id="btnDriveConnect" class="btn btn-drive btn-sm" onclick="cloudSyncNow()">☁️ Sincronizar</button>
           <button id="btnDashboard" class="btn btn-cyan btn-sm" onclick="openDashboard()" style="display:none">📊 Dashboard</button>
           <button id="btnAdminPanel" class="btn btn-purple btn-sm" onclick="openAdminPanel()" style="display:none">⚙️ Admin</button>
           <button id="btnGerResp" class="btn btn-ghost btn-sm" onclick="openManageModal('responsaveis')" style="display:none">👥 Responsáveis</button>
@@ -574,22 +572,13 @@
         <div class="confirm-title">🔑 Redefinir Senha</div>
         <div class="confirm-body">
           <div style="font-size:.82rem;color:var(--text2);margin-bottom:10px" id="rpUserLabel"></div>
-          <div class="form-group" style="margin-bottom:10px"><label>Nova Senha <span class="req">*</span></label><input type="password" id="rpInput" placeholder="Mínimo 6 caracteres"></div>
-          <div class="form-group"><label>Confirmar <span class="req">*</span></label><input type="password" id="rpInput2" placeholder="Repita a senha"></div>
+          <div style="font-size:.82rem;color:var(--text2)">Será enviado um e-mail com um link para o usuário definir uma nova senha.</div>
         </div>
         <div id="rpError" class="error-banner"></div>
         <div class="confirm-actions">
           <button class="btn btn-ghost" onclick="closeResetPass()">Cancelar</button>
           <button class="btn btn-primary" onclick="confirmResetPass()">Salvar</button>
         </div>
-      </div>
-    </div>
-    <div class="modal-overlay hidden" id="driveSetupOverlay">
-      <div class="drive-setup-modal">
-        <div style="font-size:1.1rem;font-weight:800;margin-bottom:6px;color:#7eb8ff">☁️ Google Drive — Sincronização</div>
-        <div style="font-size:.8rem;color:var(--text2);margin-bottom:18px">Dados salvos em <strong>crm-seguros-data.json</strong> no seu Drive.</div>
-        <div id="driveSetupBody"></div>
-        <div style="display:flex;justify-content:flex-end;margin-top:16px"><button class="btn btn-ghost" onclick="closeDriveSetup()">Fechar</button></div>
       </div>
     </div>
     <input type="file" id="jsonImportInput" accept=".json" style="display:none" onchange="handleJSONImport(event)">
@@ -599,25 +588,28 @@
     // ═══════════════════════════════════════
     //  CONFIGURAÇÃO
     // ═══════════════════════════════════════
-    const DRIVE_CLIENT_ID='303805397264-vb0hpe87bfq3o6h9dgrk41v0jiodjri1.apps.googleusercontent.com';
-    const DRIVE_SCOPE='https://www.googleapis.com/auth/drive.file';
-    const DRIVE_FILE_NAME='crm-seguros-data.json';
-    const DRIVE_LOCK_NAME='crm-lock.json';
-    const OAUTH_PENDING_KEY='crm_oauth_pending';
-    const OAUTH_STATE_KEY='crm_oauth_state';
-    const SESSION_KEY='crm_drive_session';
-    const LOCK_TTL_MS=10000;
-    const LOCK_MAX_RETRIES=10;
-    const LOCK_RETRY_MS=1200;
-    const POLL_INTERVAL_MS=30000;
-    
+    // Firebase (projeto compartilhado com a Gestão Comercial; o CRM usa só as coleções crm_*)
+    const FIREBASE_CONFIG={apiKey:'AIzaSyDi5FegKiwZXJlnU3KWtLFz4t8FgeRnr_8',authDomain:'gc---vertical-seguros.firebaseapp.com',projectId:'gc---vertical-seguros',storageBucket:'gc---vertical-seguros.firebasestorage.app',messagingSenderId:'637935803813',appId:'1:637935803813:web:0f27706ade5fd259525c4c'};
+    const COL_USUARIOS='crm_usuarios',COL_CARDS='crm_cards',COL_CONFIG='crm_config',DOC_CONFIG='geral';
+    const DEFAULT_LISTS={
+      responsaveis:['Administrador'],
+      seguradoras:['Porto Seguro','SulAmérica','Bradesco Seguros','Allianz','Mapfre','HDI','Tokio Marine'],
+      ramos:['Automóvel','Vida','Residencial','Empresarial','Saúde','Viagem','Rural','Responsabilidade Civil'],
+      fontes:['Indicação','Orgânico','Tráfego','Carteira'],
+    };
+
     // ═══════════════════════════════════════
-    //  ESTADO DRIVE
+    //  ESTADO NUVEM
     // ═══════════════════════════════════════
-    let driveToken=null,driveFileId=null,driveLockFileId=null;
-    let driveConnected=false,driveLastSync=null,drivePollTimer=null;
-    let driveLastModifiedTime=null;
-    
+    const fbApp=firebase.initializeApp(FIREBASE_CONFIG);
+    const fbAuth=fbApp.auth();
+    const fbDb=fbApp.firestore();
+    try{fbDb.enablePersistence({synchronizeTabs:true}).catch(()=>{});}catch(e){}
+    let cloudLastSync=null,cloudStatus='connected';
+    let unsubCards=null,unsubConfig=null,unsubUsers=null;
+    let lastSyncedCards={},lastSyncedConfig='';
+    let _registering=false;
+
     // ═══════════════════════════════════════
     //  ESTADO CRM
     // ═══════════════════════════════════════
@@ -718,17 +710,26 @@ function parseBRNum(s){
     // ═══════════════════════════════════════
     //  AUTH
     // ═══════════════════════════════════════
-    function hashPass(s){let h=5381;for(let i=0;i<s.length;i++)h=((h<<5)+h)^s.charCodeAt(i);return(h>>>0).toString(16);}
     function loadUsers(){return state.users||[];}
-    function saveUsers(u){state.users=u;if(driveConnected&&driveToken)drivePushProtected();}
-    function ensureAdmin(){
-      const u=loadUsers();
-      if(!u.find(x=>x.role==='admin')){
-        u.push({id:'admin_default',nome:'Administrador',email:'admin@crm.com',passHash:hashPass('admin123'),role:'admin',active:true,createdAt:nowISO(),updatedAt:nowISO()});
-        state.users=u;
-      }
+    function stableStr(v){
+      if(v===undefined)return'null';
+      if(v===null||typeof v!=='object')return JSON.stringify(v);
+      if(Array.isArray(v))return'['+v.map(stableStr).join(',')+']';
+      return'{'+Object.keys(v).filter(k=>v[k]!==undefined).sort().map(k=>JSON.stringify(k)+':'+stableStr(v[k])).join(',')+'}';
     }
-    
+    function plain(obj){return JSON.parse(JSON.stringify(obj));}
+    function authErrMsg(e){
+      const c=(e&&e.code)||'';
+      if(c==='auth/invalid-credential'||c==='auth/wrong-password'||c==='auth/user-not-found'||c==='auth/invalid-login-credentials')return'E-mail ou senha incorretos.';
+      if(c==='auth/invalid-email')return'E-mail inválido.';
+      if(c==='auth/email-already-in-use')return'E-mail já cadastrado.';
+      if(c==='auth/weak-password')return'Senha fraca: use ao menos 6 caracteres.';
+      if(c==='auth/too-many-requests')return'Muitas tentativas. Aguarde alguns minutos.';
+      if(c==='auth/network-request-failed')return'Sem conexão com a internet.';
+      if(c==='permission-denied')return'Sem permissão. Verifique se sua conta está ativa.';
+      return(e&&e.message)||String(e);
+    }
+
     // ═══════════════════════════════════════
     //  MERGE
     // ═══════════════════════════════════════
@@ -760,286 +761,115 @@ function parseBRNum(s){
     }
     
     // ═══════════════════════════════════════
-    //  LOCK
+    //  NUVEM (FIRESTORE)
     // ═══════════════════════════════════════
-    async function acquireLock(){
-      if(!driveLockFileId){
-        try{
-          const r=await fetch(`https://www.googleapis.com/drive/v3/files?q=name='${DRIVE_LOCK_NAME}'+and+trashed=false&fields=files(id)`,{headers:{Authorization:`Bearer ${driveToken}`}});
-          const d=await r.json();if(d.files&&d.files.length>0)driveLockFileId=d.files[0].id;
-        }catch(e){}
-      }
-      const userEmail=currentUser?currentUser.email:'sistema';
-      for(let attempt=0;attempt<LOCK_MAX_RETRIES;attempt++){
-        let lockData=null;
-        if(driveLockFileId){
-          try{const r=await fetch(`https://www.googleapis.com/drive/v3/files/${driveLockFileId}?alt=media`,{headers:{Authorization:`Bearer ${driveToken}`}});if(r.ok)lockData=await r.json();}catch(e){}
-        }
-        const now=Date.now();
-        if(lockData&&lockData.lockedBy&&lockData.lockedBy!==userEmail){
-          const expiry=new Date(lockData.expiresAt||0).getTime();
-          if(now<expiry){if(attempt===0)showToast(`⏳ Aguardando ${lockData.lockedBy} terminar de salvar...`);await new Promise(r=>setTimeout(r,LOCK_RETRY_MS));continue;}
-        }
-        const lockPayload=JSON.stringify({lockedBy:userEmail,lockedAt:new Date(now).toISOString(),expiresAt:new Date(now+LOCK_TTL_MS).toISOString()});
-        const blob=new Blob([lockPayload],{type:'application/json'});
-        try{
-          let res;
-          if(driveLockFileId){
-            res=await fetch(`https://www.googleapis.com/upload/drive/v3/files/${driveLockFileId}?uploadType=media`,{method:'PATCH',headers:{Authorization:`Bearer ${driveToken}`,'Content-Type':'application/json'},body:blob});
-          }else{
-            const form=new FormData();
-            form.append('metadata',new Blob([JSON.stringify({name:DRIVE_LOCK_NAME,mimeType:'application/json'})],{type:'application/json'}));
-            form.append('file',blob);
-            res=await fetch('https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart&fields=id',{method:'POST',headers:{Authorization:`Bearer ${driveToken}`},body:form});
-            if(res.ok){const d=await res.json();driveLockFileId=d.id;}
-          }
-          if(!res||!res.ok){await new Promise(r=>setTimeout(r,LOCK_RETRY_MS));continue;}
-        }catch(e){await new Promise(r=>setTimeout(r,LOCK_RETRY_MS));continue;}
-        // Verificação dupla
-        await new Promise(r=>setTimeout(r,600));
-        try{
-          const verify=await fetch(`https://www.googleapis.com/drive/v3/files/${driveLockFileId}?alt=media`,{headers:{Authorization:`Bearer ${driveToken}`}});
-          if(verify.ok){
-            const vd=await verify.json();
-            if(vd.lockedBy===userEmail)return true;
-            if(attempt===0)showToast(`⏳ Aguardando ${vd.lockedBy} terminar de salvar...`);
-            await new Promise(r=>setTimeout(r,LOCK_RETRY_MS));continue;
-          }
-        }catch(e){return true;}
-      }
-      return false;
+    function pickConfig(src){
+      return{stages:src.stages||[],responsaveis:src.responsaveis||[],seguradoras:src.seguradoras||[],ramos:src.ramos||[],fontes:src.fontes||[]};
     }
-    
-    async function releaseLock(){
-      if(!driveLockFileId||!driveToken)return;
-      try{
-        const blob=new Blob([JSON.stringify({lockedBy:null,lockedAt:null,expiresAt:null})],{type:'application/json'});
-        await fetch(`https://www.googleapis.com/upload/drive/v3/files/${driveLockFileId}?uploadType=media`,{method:'PATCH',headers:{Authorization:`Bearer ${driveToken}`,'Content-Type':'application/json'},body:blob});
-      }catch(e){}
+    function configKey(){return stableStr(pickConfig(state));}
+    function normalizeStages(stages){
+      (stages||[]).forEach((s,i)=>{if(s.order===undefined)s.order=i;if(s.hasTotals===undefined)s.hasTotals=['negociacao','fechado','perdido'].includes(s.id);if(s.canAdd===undefined)s.canAdd=['renovacao','prospeccao'].includes(s.id);});
+      return stages;
     }
-    
-    // ═══════════════════════════════════════
-    //  PUSH PROTEGIDO
-    // ═══════════════════════════════════════
+    function applyRemoteConfig(d){
+      if(d.stages&&d.stages.length)state.stages=normalizeStages(plain(d.stages));
+      ['responsaveis','seguradoras','ramos','fontes'].forEach(k=>{state[k]=(d[k]&&d[k].length)?plain(d[k]):(state[k]&&state[k].length?state[k]:DEFAULT_LISTS[k].slice());});
+    }
+    function replaceInPlace(target,src){Object.keys(target).forEach(k=>delete target[k]);Object.assign(target,src);}
+
+    async function cloudLoadInitial(){
+      const [cardsSnap,cfgSnap]=await Promise.all([fbDb.collection(COL_CARDS).get(),fbDb.collection(COL_CONFIG).doc(DOC_CONFIG).get()]);
+      state.cards=cardsSnap.docs.map(d=>d.data()).filter(c=>c&&c.id);
+      lastSyncedCards={};state.cards.forEach(c=>{lastSyncedCards[c.id]=stableStr(c);});
+      if(cfgSnap.exists){applyRemoteConfig(cfgSnap.data());lastSyncedConfig=configKey();}
+      else{lastSyncedConfig='';}
+      cloudLastSync=Date.now();
+    }
+
+    function refreshUI(){
+      if(document.getElementById('appScreen').style.display!=='none'){updateFilterOptions();renderBoard();}
+      const ao=document.getElementById('adminOverlay');if(ao&&!ao.classList.contains('hidden'))renderAdminPanel();
+    }
+
+    function startCloudListeners(){
+      stopCloudListeners();
+      unsubCards=fbDb.collection(COL_CARDS).onSnapshot(snap=>{
+        let changed=false;
+        snap.docChanges().forEach(ch=>{
+          const d=ch.doc.data();if(!d||!d.id)return;
+          if(ch.type==='removed'){const before=state.cards.length;state.cards=state.cards.filter(c=>c.id!==d.id);delete lastSyncedCards[d.id];if(state.cards.length!==before)changed=true;return;}
+          const rk=stableStr(d);
+          const local=state.cards.find(c=>c.id===d.id);
+          if(!local){state.cards.push(d);lastSyncedCards[d.id]=rk;changed=true;return;}
+          const lk=stableStr(local);
+          if(lk===rk){lastSyncedCards[d.id]=rk;return;}
+          const ld=new Date(local.updatedAt||local.createdAt||0),rd=new Date(d.updatedAt||d.createdAt||0);
+          if(lastSyncedCards[d.id]===lk||rd>ld){replaceInPlace(local,d);lastSyncedCards[d.id]=rk;changed=true;}
+          // senão: edição local ainda não enviada é mais nova → cloudPush envia
+        });
+        if(changed){cloudLastSync=Date.now();updateLastSyncLabel();refreshUI();if(!snap.metadata.hasPendingWrites&&!snap.metadata.fromCache)showToast('🔄 Dados atualizados.',2000);}
+      },err=>{console.error('cards listener:',err);updateCloudBadge('error');});
+      unsubConfig=fbDb.collection(COL_CONFIG).doc(DOC_CONFIG).onSnapshot(doc=>{
+        if(!doc.exists)return;
+        const d=doc.data();const rk=stableStr(pickConfig(d)),lk=configKey();
+        if(rk===lk){lastSyncedConfig=lk;return;}
+        if(lk===lastSyncedConfig){applyRemoteConfig(d);lastSyncedConfig=configKey();refreshUI();}
+        else{const m=mergeStates({...pickConfig(d),cards:[],users:[]},{...pickConfig(state),cards:[],users:[]});state.stages=normalizeStages(m.stages);state.responsaveis=m.responsaveis;state.seguradoras=m.seguradoras;state.ramos=m.ramos;state.fontes=m.fontes;lastSyncedConfig='';saveState();refreshUI();}
+      },err=>{console.error('config listener:',err);});
+      if(currentUser&&currentUser.role==='admin'){
+        unsubUsers=fbDb.collection(COL_USUARIOS).onSnapshot(snap=>{state.users=snap.docs.map(d=>({...d.data(),id:d.id}));const ao=document.getElementById('adminOverlay');if(ao&&!ao.classList.contains('hidden'))renderAdminPanel();},err=>{console.error('users listener:',err);});
+      }else{state.users=currentUser?[currentUser]:[];}
+    }
+    function stopCloudListeners(){[unsubCards,unsubConfig,unsubUsers].forEach(u=>{if(u)try{u();}catch(e){}});unsubCards=unsubConfig=unsubUsers=null;}
+
     let _pushInProgress=false,_pushPending=false;
-    async function drivePushProtected(){
-      if(!driveConnected||!driveToken||!driveFileId)return;
+    async function cloudPush(){
+      if(!currentUser)return;
       if(_pushInProgress){_pushPending=true;return;}
-      _pushInProgress=true;_pushPending=false;
-      updateDriveBadge('syncing');
+      _pushInProgress=true;_pushPending=false;updateCloudBadge('syncing');
       try{
-        await acquireLock();
-        let remoteState=null;
-        try{const r=await fetch(`https://www.googleapis.com/drive/v3/files/${driveFileId}?alt=media`,{headers:{Authorization:`Bearer ${driveToken}`}});if(r.ok)remoteState=await r.json();}catch(e){}
-        let merged=state;
-        if(remoteState&&remoteState.cards&&remoteState.stages)merged=mergeStates(remoteState,state);
-        if(!merged.users)merged.users=[];
-        merged.stages.forEach((s,i)=>{if(s.order===undefined)s.order=i;if(s.hasTotals===undefined)s.hasTotals=['negociacao','fechado','perdido'].includes(s.id);if(s.canAdd===undefined)s.canAdd=['renovacao','prospeccao'].includes(s.id);});
-        state=merged;
-        const blob=new Blob([JSON.stringify(state,null,2)],{type:'application/json'});
-        const res=await fetch(`https://www.googleapis.com/upload/drive/v3/files/${driveFileId}?uploadType=media&fields=id,modifiedTime`,{method:'PATCH',headers:{Authorization:`Bearer ${driveToken}`,'Content-Type':'application/json'},body:blob});
-        if(!res.ok)throw new Error('Upload: '+res.status);
-        const rd=await res.json();driveLastModifiedTime=rd.modifiedTime||null;
-        driveLastSync=Date.now();updateDriveBadge('connected');updateLastSyncLabel();
-        if(document.getElementById('appScreen').style.display!=='none'){updateFilterOptions();renderBoard();}
+        const ops=[];
+        state.cards.forEach(c=>{if(!c||!c.id)return;const k=stableStr(c);if(lastSyncedCards[c.id]!==k)ops.push({id:c.id,data:plain(c),key:k});});
+        for(let i=0;i<ops.length;i+=400){
+          const chunk=ops.slice(i,i+400);const batch=fbDb.batch();
+          chunk.forEach(o=>batch.set(fbDb.collection(COL_CARDS).doc(o.id),o.data));
+          await batch.commit();chunk.forEach(o=>{lastSyncedCards[o.id]=o.key;});
+        }
+        const ck=configKey();
+        if(ck!==lastSyncedConfig){await fbDb.collection(COL_CONFIG).doc(DOC_CONFIG).set({...plain(pickConfig(state)),updatedAt:nowISO(),updatedBy:currentUser.email});lastSyncedConfig=ck;}
+        cloudLastSync=Date.now();updateCloudBadge('connected');updateLastSyncLabel();
       }catch(err){
-        console.error('drivePushProtected:',err);updateDriveBadge('connected');
-        if(String(err.message).match(/401|403/)){driveConnected=false;showToast('⚠️ Sessão Drive expirada. Reconecte.');}
+        console.error('cloudPush:',err);updateCloudBadge('error');showToast('⚠️ Erro ao salvar na nuvem: '+authErrMsg(err),6000);
       }finally{
-        await releaseLock();_pushInProgress=false;
-        if(_pushPending){_pushPending=false;setTimeout(drivePushProtected,500);}
+        _pushInProgress=false;
+        if(_pushPending){_pushPending=false;setTimeout(cloudPush,400);}
       }
     }
-    
-    function saveState(){
-      if(driveConnected&&driveToken){clearTimeout(saveState._t);saveState._t=setTimeout(()=>drivePushProtected(),1500);}
-    }
-    
-    // ═══════════════════════════════════════
-    //  OAUTH
-    // ═══════════════════════════════════════
-    function startOAuthRedirect(context){
-      const state_=Math.random().toString(36).slice(2)+Math.random().toString(36).slice(2);
-      sessionStorage.setItem(OAUTH_PENDING_KEY,context);sessionStorage.setItem(OAUTH_STATE_KEY,state_);
-      const redirectUri=window.location.href.split('?')[0].split('#')[0];
-      const params=new URLSearchParams({client_id:DRIVE_CLIENT_ID,redirect_uri:redirectUri,response_type:'token',scope:DRIVE_SCOPE,state:state_,prompt:'select_account'});
-      window.location.href='https://accounts.google.com/o/oauth2/v2/auth?'+params.toString();
-    }
-    
-    function checkOAuthReturn(){
-      const hash=window.location.hash;if(!hash||!hash.includes('access_token'))return false;
-      document.getElementById('oauthLoadingScreen').style.display='flex';document.getElementById('loginScreen').style.display='none';
-      history.replaceState(null,'',window.location.pathname+window.location.search);
-      const params=new URLSearchParams(hash.slice(1));
-      const token=params.get('access_token'),retState=params.get('state');
-      const context=sessionStorage.getItem(OAUTH_PENDING_KEY)||'prelogin';
-      const savedState=sessionStorage.getItem(OAUTH_STATE_KEY);
-      sessionStorage.removeItem(OAUTH_PENDING_KEY);sessionStorage.removeItem(OAUTH_STATE_KEY);
-      if(!token){showScreen('login');alert('❌ Falha na autenticação.');return true;}
-      if(retState&&savedState&&retState!==savedState){showScreen('login');alert('❌ Erro de segurança OAuth.');return true;}
-      driveToken=token;driveConnected=true;
-      sessionStorage.setItem(SESSION_KEY,JSON.stringify({token,expiry:Date.now()+3500*1000}));
-      driveInitFile(context);return true;
-    }
-    
+    function saveState(){if(!currentUser)return;clearTimeout(saveState._t);saveState._t=setTimeout(cloudPush,600);}
+    function cloudSyncNow(){if(currentUser)cloudPush();}
+
     function showScreen(which){
       document.getElementById('oauthLoadingScreen').style.display='none';
       document.getElementById('loginScreen').style.display=(which==='login')?'flex':'none';
       document.getElementById('appScreen').style.display=(which==='app')?'block':'none';
       document.getElementById('dashScreen').style.display='none';
     }
-    
-    // ═══════════════════════════════════════
-    //  DRIVE INIT
-    // ═══════════════════════════════════════
-    async function driveInitFile(context){
-      const msgEl=document.getElementById('oauthLoadingMsg');
-      if(msgEl)msgEl.textContent='Verificando arquivos no Drive...';
-      try{
-        const [dataRes,lockRes]=await Promise.all([
-          fetch(`https://www.googleapis.com/drive/v3/files?q=name='${DRIVE_FILE_NAME}'+and+trashed=false&fields=files(id,modifiedTime)`,{headers:{Authorization:`Bearer ${driveToken}`}}),
-          fetch(`https://www.googleapis.com/drive/v3/files?q=name='${DRIVE_LOCK_NAME}'+and+trashed=false&fields=files(id)`,{headers:{Authorization:`Bearer ${driveToken}`}})
-        ]);
-        if(!dataRes.ok)throw new Error('Drive API: '+dataRes.status);
-        const dataJson=await dataRes.json();const lockJson=lockRes.ok?await lockRes.json():{files:[]};
-        if(lockJson.files&&lockJson.files.length>0)driveLockFileId=lockJson.files[0].id;
-        if(dataJson.files&&dataJson.files.length>0){
-          driveFileId=dataJson.files[0].id;driveLastModifiedTime=dataJson.files[0].modifiedTime||null;
-          if(msgEl)msgEl.textContent='Carregando dados do Drive...';
-          await drivePullSilent();
-        }else{
-          if(msgEl)msgEl.textContent='Criando arquivo no Drive...';
-          ensureAdmin();await drivePushInitial();
-        }
-        if(!driveLockFileId)await createLockFile();
-        updateDriveBadge('connected');updateLastSyncLabel();
-        if(context==='prelogin'){showScreen('login');updatePreloginPanel();}
-        else{
-          const savedId=sessionStorage.getItem('crm_logged_user');
-          if(savedId){const u=loadUsers().find(x=>x.id===savedId);if(u&&u.active){currentUser=u;showScreen('app');startAppUI();return;}}
-          showScreen('login');updatePreloginPanel();
-        }
-      }catch(err){
-        console.error('driveInitFile:',err);driveToken=null;driveConnected=false;sessionStorage.removeItem(SESSION_KEY);
-        showScreen('login');alert('❌ Erro ao conectar ao Drive:\n'+err.message);
-      }
-    }
-    
-    async function drivePushInitial(){
-      if(!driveToken)return;
-      const blob=new Blob([JSON.stringify(state,null,2)],{type:'application/json'});
-      if(driveFileId){
-        const res=await fetch(`https://www.googleapis.com/upload/drive/v3/files/${driveFileId}?uploadType=media&fields=id,modifiedTime`,{method:'PATCH',headers:{Authorization:`Bearer ${driveToken}`,'Content-Type':'application/json'},body:blob});
-        if(res.ok){const d=await res.json();driveLastModifiedTime=d.modifiedTime||null;}
-      }else{
-        const form=new FormData();
-        form.append('metadata',new Blob([JSON.stringify({name:DRIVE_FILE_NAME,mimeType:'application/json'})],{type:'application/json'}));
-        form.append('file',blob);
-        const res=await fetch('https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart&fields=id,modifiedTime',{method:'POST',headers:{Authorization:`Bearer ${driveToken}`},body:form});
-        if(res.ok){const d=await res.json();driveFileId=d.id;driveLastModifiedTime=d.modifiedTime||null;}
-      }
-      driveLastSync=Date.now();updateLastSyncLabel();
-    }
-    
-    async function createLockFile(){
-      if(!driveToken)return;
-      try{
-        const form=new FormData();
-        form.append('metadata',new Blob([JSON.stringify({name:DRIVE_LOCK_NAME,mimeType:'application/json'})],{type:'application/json'}));
-        form.append('file',new Blob([JSON.stringify({lockedBy:null,lockedAt:null,expiresAt:null})],{type:'application/json'}));
-        const res=await fetch('https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart&fields=id',{method:'POST',headers:{Authorization:`Bearer ${driveToken}`},body:form});
-        if(res.ok){const d=await res.json();driveLockFileId=d.id;}
-      }catch(e){}
-    }
-    
-    // ═══════════════════════════════════════
-    //  PULL / POLLING
-    // ═══════════════════════════════════════
-    async function drivePullNow(){
-      if(!driveToken||!driveFileId)return;updateDriveBadge('syncing');
-      try{
-        const res=await fetch(`https://www.googleapis.com/drive/v3/files/${driveFileId}?alt=media`,{headers:{Authorization:`Bearer ${driveToken}`}});
-        if(!res.ok)throw new Error('Download: '+res.status);
-        const data=await res.json();
-        if(data.stages&&data.cards){applyRemoteState(data);driveLastSync=Date.now();updateDriveBadge('connected');updateLastSyncLabel();updateFilterOptions();renderBoard();}
-        else throw new Error('Formato inválido.');
-      }catch(err){console.error('drivePullNow:',err);updateDriveBadge('connected');alert('❌ Erro ao carregar do Drive:\n'+err.message);}
-    }
-    
-    async function drivePullSilent(){
-      if(!driveToken||!driveFileId)return;
-      try{
-        const res=await fetch(`https://www.googleapis.com/drive/v3/files/${driveFileId}?alt=media`,{headers:{Authorization:`Bearer ${driveToken}`}});
-        if(!res.ok)return;const data=await res.json();
-        if(data.stages&&data.cards){applyRemoteState(data);driveLastSync=Date.now();updateLastSyncLabel();if(document.getElementById('appScreen').style.display!=='none'){updateFilterOptions();renderBoard();}}
-      }catch(e){}
-    }
-    
-    async function driveCheckForUpdates(){
-      if(!driveConnected||!driveToken||!driveFileId||_pushInProgress)return;
-      try{
-        const res=await fetch(`https://www.googleapis.com/drive/v3/files/${driveFileId}?fields=modifiedTime`,{headers:{Authorization:`Bearer ${driveToken}`}});
-        if(!res.ok)return;const data=await res.json();
-        if(data.modifiedTime&&data.modifiedTime!==driveLastModifiedTime){driveLastModifiedTime=data.modifiedTime;await drivePullSilent();showToast('🔄 Dados atualizados por outro usuário.');}
-      }catch(e){}
-    }
-    
-    function startDrivePoll(){stopDrivePoll();drivePollTimer=setInterval(driveCheckForUpdates,POLL_INTERVAL_MS);}
-    function stopDrivePoll(){if(drivePollTimer){clearInterval(drivePollTimer);drivePollTimer=null;}}
-    
-    function applyRemoteState(data){
-      state=data;
-      if(!state.users)state.users=[];
-      if(!state.responsaveis)state.responsaveis=['Administrador'];
-      if(!state.seguradoras)state.seguradoras=['Porto Seguro','SulAmérica','Bradesco Seguros','Allianz','Mapfre','HDI','Tokio Marine'];
-      if(!state.ramos)state.ramos=['Automóvel','Vida','Residencial','Empresarial','Saúde','Viagem','Rural','Responsabilidade Civil'];
-      if(!state.fontes)state.fontes=['Indicação','Orgânico','Tráfego','Carteira'];
-      state.stages.forEach((s,i)=>{if(s.order===undefined)s.order=i;if(s.hasTotals===undefined)s.hasTotals=['negociacao','fechado','perdido'].includes(s.id);if(s.canAdd===undefined)s.canAdd=['renovacao','prospeccao'].includes(s.id);});
-      ensureAdmin();
-    }
-    
-    function driveSyncNow(){if(driveConnected)drivePushProtected();}
-    
+    function showLoading(msg){document.getElementById('oauthLoadingScreen').style.display='flex';document.getElementById('loginScreen').style.display='none';const m=document.getElementById('oauthLoadingMsg');if(m&&msg)m.textContent=msg;}
+
     // ═══════════════════════════════════════
     //  BADGES
     // ═══════════════════════════════════════
-    function updateDriveBadge(status){
-      const badge=document.getElementById('driveBadge'),dot=document.getElementById('syncDot'),lbl=document.getElementById('driveLabel'),btn=document.getElementById('btnDriveConnect');
+    function updateCloudBadge(status){
+      cloudStatus=status;
+      const badge=document.getElementById('driveBadge'),dot=document.getElementById('syncDot'),lbl=document.getElementById('driveLabel');
       if(!badge)return;badge.className='drive-badge';
-      if(status==='connected'){badge.classList.add('drive-connected');dot.className='sync-dot sync-dot-green';lbl.textContent='Drive: conectado';if(btn){btn.textContent='☁️ Sincronizar';btn.onclick=driveSyncNow;}}
-      else if(status==='syncing'){badge.classList.add('drive-syncing');dot.className='sync-dot sync-dot-yellow';lbl.textContent='Drive: sincronizando...';}
-      else{badge.classList.add('drive-disconnected');dot.className='sync-dot sync-dot-gray';lbl.textContent='Drive: desconectado';}
+      if(status==='connected'){badge.classList.add('drive-connected');dot.className='sync-dot sync-dot-green';lbl.textContent='Nuvem: conectado';}
+      else if(status==='syncing'){badge.classList.add('drive-syncing');dot.className='sync-dot sync-dot-yellow';lbl.textContent='Nuvem: salvando...';}
+      else if(status==='error'){badge.classList.add('drive-disconnected');dot.className='sync-dot sync-dot-gray';lbl.textContent='Nuvem: erro ao salvar';}
+      else{badge.classList.add('drive-disconnected');dot.className='sync-dot sync-dot-gray';lbl.textContent='Nuvem: desconectado';}
     }
-    function updateLastSyncLabel(){const lbl=document.getElementById('lastSyncLabel');if(!lbl)return;if(driveLastSync){lbl.style.display='block';lbl.textContent='Última sync: '+fmtDateTime(driveLastSync);}else lbl.style.display='none';}
-    
-    // ═══════════════════════════════════════
-    //  PAINEL PRÉ-LOGIN
-    // ═══════════════════════════════════════
-    function updatePreloginPanel(){
-      const statusEl=document.getElementById('preloginDriveStatus'),actionsEl=document.getElementById('preloginDriveActions');
-      if(!statusEl||!actionsEl)return;
-      if(driveConnected){
-        statusEl.innerHTML='✅ <strong>Drive conectado.</strong> Dados carregados. Faça login para continuar.'+(driveLastSync?`<br><span style="font-size:.7rem;color:var(--text3)">Última sync: ${fmtDateTime(driveLastSync)}</span>`:'');
-        actionsEl.innerHTML=`<div style="display:flex;gap:7px;flex-wrap:wrap;margin-top:4px"><button class="btn btn-success btn-sm" onclick="preloginPull()">🔄 Recarregar do Drive</button><button class="btn btn-ghost btn-sm" onclick="preloginDisconnect()">✕ Desconectar</button></div>`;
-      }else{
-        statusEl.textContent='Todos os dados (usuários, cards, configurações) são salvos exclusivamente no Google Drive.';
-        actionsEl.innerHTML=`<button class="btn btn-drive btn-sm" style="margin-top:4px" onclick="startOAuthRedirect('prelogin')"><svg width="14" height="14" viewBox="0 0 87.3 78" style="flex-shrink:0"><path fill="#0066da" d="M6.6 66.85l3.85 6.65c.8 1.4 1.95 2.5 3.3 3.3l13.75-23.8H14.9c-2.8 0-5.4.75-7.65 2.05z"/><path fill="#00ac47" d="M43.65 25L29.9 1.2c-1.35.8-2.5 1.9-3.3 3.3L3.35 44.5c-.8 1.4-1.2 2.95-1.2 4.55h27.5z"/><path fill="#ea4335" d="M73.55 76.8c1.35-.8 2.5-1.9 3.3-3.3l1.6-2.75 7.65-13.25c.8-1.4 1.2-2.95 1.2-4.55H59.8l5.85 11.2z"/><path fill="#00832d" d="M43.65 25L57.4 1.2C56.05.4 54.5 0 52.9 0H34.4c-1.6 0-3.15.45-4.5 1.2z"/><path fill="#2684fc" d="M59.8 53H32.5L18.75 76.8c1.35.8 2.9 1.2 4.5 1.2h43c1.6 0 3.15-.45 4.5-1.2z"/><path fill="#ffba00" d="M73.4 26.5l-12.25-21.2c-.8-1.4-1.95-2.5-3.3-3.3L43.65 25l16.15 28H87.3c0-1.6-.4-3.15-1.2-4.55z"/></svg>Conectar com Google Drive</button>`;
-      }
-    }
-    async function preloginPull(){document.getElementById('preloginDriveStatus').textContent='🔄 Carregando dados do Drive...';await drivePullSilent();updatePreloginPanel();}
-    function preloginDisconnect(){
-      driveToken=null;driveFileId=null;driveLockFileId=null;driveConnected=false;sessionStorage.removeItem(SESSION_KEY);
-      state={stages:JSON.parse(JSON.stringify(DEFAULT_STAGES)),cards:[],users:[],responsaveis:['Administrador'],seguradoras:['Porto Seguro','SulAmérica','Bradesco Seguros','Allianz','Mapfre','HDI','Tokio Marine'],ramos:['Automóvel','Vida','Residencial','Empresarial','Saúde','Viagem','Rural','Responsabilidade Civil'],fontes:['Indicação','Orgânico','Tráfego','Carteira']};
-      updatePreloginPanel();
-    }
-    
-    function openDriveSetup(){renderDriveSetupBody();document.getElementById('driveSetupOverlay').classList.remove('hidden');}
-    function closeDriveSetup(){document.getElementById('driveSetupOverlay').classList.add('hidden');}
-    function renderDriveSetupBody(){
-      const body=document.getElementById('driveSetupBody');if(!body)return;
-      body.innerHTML=`<div class="info-banner">✅ Conectado. Arquivo: <strong>${DRIVE_FILE_NAME}</strong></div><div style="background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:12px;font-size:.82rem;margin-bottom:12px"><div style="display:flex;justify-content:space-between;margin-bottom:8px"><span style="color:var(--text2)">Última sincronização</span><span style="color:var(--text);font-weight:600">${fmtDateTime(driveLastSync)}</span></div><div style="display:flex;justify-content:space-between"><span style="color:var(--text2)">Polling (30s)</span><span style="color:var(--green);font-weight:600">Ativo</span></div></div><div style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn btn-drive btn-sm" onclick="driveSyncNow()">☁️ Salvar agora</button><button class="btn btn-ghost btn-sm" onclick="drivePullNow()">🔄 Carregar do Drive</button></div>`;
-    }
-    
+    function updateLastSyncLabel(){const lbl=document.getElementById('lastSyncLabel');if(!lbl)return;if(cloudLastSync){lbl.style.display='block';lbl.textContent='Última sync: '+fmtDateTime(cloudLastSync);}else lbl.style.display='none';}
+
     // ═══════════════════════════════════════
     //  LOGIN / LOGOUT
     // ═══════════════════════════════════════
@@ -1053,44 +883,88 @@ function parseBRNum(s){
     function showLoginErr(m){const e=document.getElementById('loginError');e.textContent=m;e.style.display='block';}
     function showLoginOk(m){const e=document.getElementById('loginSuccess');e.textContent=m;e.style.display='block';}
     
-    function doLogin(){
+    async function doLogin(){
       clearLoginMsg();
-      if(!driveConnected){showLoginErr('☁️ Conecte ao Google Drive antes de fazer login.');return;}
       const email=document.getElementById('loginEmail').value.trim().toLowerCase();
       const pass=document.getElementById('loginPass').value;
       if(!email||!pass){showLoginErr('Preencha e-mail e senha.');return;}
-      const u=loadUsers().find(x=>x.email===email&&x.passHash===hashPass(pass));
-      if(!u){showLoginErr('E-mail ou senha incorretos.');return;}
-      if(!u.active){showLoginErr('Conta não ativada. Aguarde o administrador.');return;}
-      currentUser=u;sessionStorage.setItem('crm_logged_user',u.id);showScreen('app');startAppUI();
+      const btn=document.getElementById('btnLogin');if(btn){btn.disabled=true;btn.textContent='⏳ Entrando...';}
+      try{await fbAuth.signInWithEmailAndPassword(email,pass);}
+      catch(e){showLoginErr(authErrMsg(e));}
+      finally{if(btn){btn.disabled=false;btn.textContent='Entrar →';}}
     }
-    
-    function doRegister(){
+
+    async function doForgotPass(){
       clearLoginMsg();
-      if(!driveConnected){showLoginErr('☁️ Conecte ao Google Drive antes de criar conta.');return;}
+      const email=document.getElementById('loginEmail').value.trim().toLowerCase();
+      if(!email){showLoginErr('Digite seu e-mail no campo acima e clique de novo em "Esqueci minha senha".');return;}
+      try{await fbAuth.sendPasswordResetEmail(email);showLoginOk('📧 Enviamos um e-mail para '+email+' com o link para redefinir a senha. Confira também o spam.');}
+      catch(e){showLoginErr(authErrMsg(e));}
+    }
+
+    async function doRegister(){
+      clearLoginMsg();
       const nome=document.getElementById('regNome').value.trim();
       const email=document.getElementById('regEmail').value.trim().toLowerCase();
       const pass=document.getElementById('regPass').value,pass2=document.getElementById('regPass2').value;
       if(!nome||!email||!pass||!pass2){showLoginErr('Preencha todos os campos.');return;}
       if(pass.length<6){showLoginErr('Senha deve ter ao menos 6 caracteres.');return;}
       if(pass!==pass2){showLoginErr('Senhas não coincidem.');return;}
-      const users=loadUsers();
-      if(users.find(x=>x.email===email)){showLoginErr('E-mail já cadastrado.');return;}
-      users.push({id:uid(),nome,email,passHash:hashPass(pass),role:'user',active:false,createdAt:nowISO(),updatedAt:nowISO()});
-      saveUsers(users);showLoginOk('✅ Cadastro enviado! Aguarde ativação pelo administrador.');switchLoginTab('login');
+      const btn=document.getElementById('btnRegister');if(btn){btn.disabled=true;btn.textContent='⏳ Enviando...';}
+      _registering=true;
+      try{
+        const cred=await fbAuth.createUserWithEmailAndPassword(email,pass);
+        try{await cred.user.updateProfile({displayName:nome});}catch(e){}
+        const now=nowISO();
+        await fbDb.collection(COL_USUARIOS).doc(cred.user.uid).set({id:cred.user.uid,nome,email:cred.user.email||email,role:'user',active:false,createdAt:now,updatedAt:now});
+        await fbAuth.signOut();
+        ['regNome','regEmail','regPass','regPass2'].forEach(id=>{document.getElementById(id).value='';});
+        switchLoginTab('login');showLoginOk('✅ Cadastro enviado! Aguarde ativação pelo administrador.');
+      }catch(e){showLoginErr(authErrMsg(e));try{await fbAuth.signOut();}catch(_){}}
+      finally{_registering=false;if(btn){btn.disabled=false;btn.textContent='Solicitar Cadastro →';}}
     }
-    
+
     async function doLogout(){
       const btn=document.getElementById('btnSair');
       if(btn){btn.disabled=true;btn.textContent='⏳ Salvando...';}
-      stopDrivePoll();
-      try{await drivePushProtected();}catch(e){}
+      try{clearTimeout(saveState._t);await cloudPush();}catch(e){}
+      stopCloudListeners();
       if(btn){btn.disabled=false;btn.textContent='Sair';}
-      currentUser=null;sessionStorage.removeItem('crm_logged_user');
-      showScreen('login');updatePreloginPanel();
+      currentUser=null;
+      try{await fbAuth.signOut();}catch(e){}
+      resetLocalState();
+      showScreen('login');
       document.getElementById('loginEmail').value='';document.getElementById('loginPass').value='';clearLoginMsg();
     }
-    
+    function resetLocalState(){
+      state={stages:JSON.parse(JSON.stringify(DEFAULT_STAGES)),cards:[],users:[],responsaveis:DEFAULT_LISTS.responsaveis.slice(),seguradoras:DEFAULT_LISTS.seguradoras.slice(),ramos:DEFAULT_LISTS.ramos.slice(),fontes:DEFAULT_LISTS.fontes.slice()};
+      lastSyncedCards={};lastSyncedConfig='';cloudLastSync=null;
+    }
+
+    async function enterWithUser(user){
+      try{
+        showLoading('Carregando seus dados...');
+        const ref=fbDb.collection(COL_USUARIOS).doc(user.uid);
+        const snap=await ref.get();
+        if(!snap.exists){
+          const now=nowISO();
+          await ref.set({id:user.uid,nome:user.displayName||(user.email||'').split('@')[0],email:user.email||'',role:'user',active:false,createdAt:now,updatedAt:now});
+          await fbAuth.signOut();showScreen('login');showLoginErr('Seu acesso foi solicitado. Aguarde a ativação pelo administrador.');return;
+        }
+        const prof=snap.data();
+        if(!prof.active){await fbAuth.signOut();showScreen('login');showLoginErr('Conta não ativada. Aguarde o administrador.');return;}
+        currentUser={...prof,id:user.uid};
+        resetLocalState();
+        await cloudLoadInitial();
+        startCloudListeners();
+        showScreen('app');startAppUI();
+      }catch(err){
+        console.error('enterWithUser:',err);currentUser=null;stopCloudListeners();
+        try{await fbAuth.signOut();}catch(e){}
+        showScreen('login');showLoginErr('Erro ao entrar: '+authErrMsg(err));
+      }
+    }
+
     function startAppUI(){
       document.getElementById('hUserName').textContent=currentUser.nome;
       const rt=document.getElementById('hUserRole');
@@ -1101,26 +975,23 @@ function parseBRNum(s){
       document.getElementById('btnGerResp').style.display=isAdmin?'inline-flex':'none';
       document.getElementById('btnDashboard').style.display=isAdmin?'inline-flex':'none';
       if(!state.responsaveis.includes(currentUser.nome)){state.responsaveis.push(currentUser.nome);saveState();}
-      updateDriveBadge('connected');updateLastSyncLabel();startDrivePoll();updateFilterOptions();renderBoard();
+      updateCloudBadge('connected');updateLastSyncLabel();updateFilterOptions();renderBoard();
     }
-    
+
     // ═══════════════════════════════════════
     //  INIT
     // ═══════════════════════════════════════
     (function init(){
-      if(checkOAuthReturn())return;
-      try{
-        const s=JSON.parse(sessionStorage.getItem(SESSION_KEY)||'null');
-        if(s&&s.token&&s.expiry&&Date.now()<s.expiry){
-          driveToken=s.token;driveConnected=true;
-          document.getElementById('oauthLoadingScreen').style.display='flex';
-          document.getElementById('loginScreen').style.display='none';
-          driveInitFile(sessionStorage.getItem('crm_logged_user')?'postlogin':'prelogin');return;
-        }
-      }catch(e){}
-      updatePreloginPanel();
+      showLoading('Conectando ao servidor...');
+      fbAuth.onAuthStateChanged(user=>{
+        if(_registering)return;
+        if(!user){if(!currentUser)showScreen('login');return;}
+        if(currentUser&&currentUser.id===user.uid)return;
+        enterWithUser(user);
+      });
+      window.addEventListener('beforeunload',()=>{if(saveState._t){clearTimeout(saveState._t);cloudPush();}});
     })();
-    
+
     // ═══════════════════════════════════════
     //  FILTROS & BOARD
     // ═══════════════════════════════════════
@@ -1816,7 +1687,7 @@ function tabFU(){
     // ═══════════════════════════════════════
     function exportData(){const b=new Blob([JSON.stringify(state,null,2)],{type:'application/json'});const a=document.createElement('a');a.href=URL.createObjectURL(b);a.download=`crm-seguros-${todayStr()}.json`;a.click();}
     function importJSON(){document.getElementById('jsonImportInput').click();}
-    function handleJSONImport(e){const f=e.target.files[0];if(!f)return;const r=new FileReader();r.onload=ev=>{try{const d=JSON.parse(ev.target.result);if(d.stages&&d.cards){state=d;if(!state.users)state.users=[];ensureAdmin();saveState();renderBoard();alert('✅ Importado!');}else alert('❌ JSON inválido.');}catch(err){alert('❌ Erro: '+err.message);}};r.readAsText(f);e.target.value='';}
+    function handleJSONImport(e){const f=e.target.files[0];if(!f)return;const r=new FileReader();r.onload=ev=>{try{const d=JSON.parse(ev.target.result);if(d.stages&&d.cards){if(!confirm(`Importar ${d.cards.length} card(s) do arquivo? Cards com o mesmo id são atualizados se o arquivo for mais recente.`)){e.target.value='';return;}const m=mergeStates({...pickConfig(state),cards:state.cards,users:[]},{...pickConfig(d),cards:d.cards,users:[]});state.cards=m.cards;state.stages=normalizeStages(m.stages);state.responsaveis=m.responsaveis;state.seguradoras=m.seguradoras;state.ramos=m.ramos;state.fontes=m.fontes;saveState();renderBoard();alert('✅ Importado! Enviando para a nuvem...');}else alert('❌ JSON inválido.');}catch(err){alert('❌ Erro: '+err.message);}};r.readAsText(f);e.target.value='';}
     
 function gerarPlanilha(){
   if(typeof XLSX==='undefined'){alert('❌ SheetJS não carregado.');return;}
@@ -1893,30 +1764,54 @@ const pb=parsNum(g(11)),pc=parsNum(g(12)),iof=pb*0.06872,pl=Math.round((pb-iof)*
       h+=`<div class="section-title" style="margin-top:18px">➕ Criar Usuário</div><div style="background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:14px"><div class="form-grid"><div class="form-group"><label>Nome <span class="req">*</span></label><input id="nuNome" placeholder="Nome completo"></div><div class="form-group"><label>E-mail <span class="req">*</span></label><input type="email" id="nuEmail" placeholder="email@exemplo.com"></div><div class="form-group"><label>Senha <span class="req">*</span></label><input type="password" id="nuPass" placeholder="Mín. 6 caracteres"></div><div class="form-group"><label>Perfil</label><select id="nuRole"><option value="user">Usuário</option><option value="admin">Administrador</option></select></div></div><div id="nuError" class="error-banner"></div><button class="btn btn-success btn-sm" style="margin-top:10px" onclick="createUserAdmin()">+ Criar Usuário</button></div>`;
       document.getElementById('adminBody').innerHTML=h;
     }
-    function activateUser(id){const u=loadUsers(),x=u.find(x=>x.id===id);if(x){x.active=true;x.updatedAt=nowISO();saveUsers(u);}renderAdminPanel();}
-    function deleteUser(id){saveUsers(loadUsers().filter(x=>x.id!==id));renderAdminPanel();}
-    function toggleRole(id){const u=loadUsers(),x=u.find(x=>x.id===id);if(x){x.role=x.role==='admin'?'user':'admin';x.updatedAt=nowISO();saveUsers(u);}renderAdminPanel();}
-    function openResetPass(id){rpUserId=id;const u=loadUsers().find(x=>x.id===id);document.getElementById('rpUserLabel').textContent=`Usuário: ${u?.nome} (${u?.email})`;document.getElementById('rpInput').value='';document.getElementById('rpInput2').value='';document.getElementById('rpError').style.display='none';document.getElementById('resetPassOverlay').classList.remove('hidden');}
-    function closeResetPass(){document.getElementById('resetPassOverlay').classList.add('hidden');rpUserId=null;}
-    function confirmResetPass(){
-      const p1=document.getElementById('rpInput').value,p2=document.getElementById('rpInput2').value,err=document.getElementById('rpError');
-      if(p1.length<6){err.textContent='Mín. 6 caracteres.';err.style.display='block';return;}
-      if(p1!==p2){err.textContent='Senhas não coincidem.';err.style.display='block';return;}
-      const u=loadUsers(),x=u.find(x=>x.id===rpUserId);if(x){x.passHash=hashPass(p1);x.updatedAt=nowISO();saveUsers(u);}
-      closeResetPass();renderAdminPanel();alert('✅ Senha redefinida!');
+    async function adminUpdateUser(id,data){
+      try{await fbDb.collection(COL_USUARIOS).doc(id).update({...data,updatedAt:nowISO()});}
+      catch(e){alert('❌ '+authErrMsg(e));}
     }
-    function createUserAdmin(){
+    async function activateUser(id){
+      const u=loadUsers().find(x=>x.id===id);
+      await adminUpdateUser(id,{active:true});
+      if(u&&u.nome&&!state.responsaveis.includes(u.nome)){state.responsaveis.push(u.nome);saveState();}
+      renderAdminPanel();
+    }
+    function deleteUser(id){
+      const u=loadUsers().find(x=>x.id===id);
+      showConfirmModal('🗑 Remover acesso',`Remover o acesso de <strong>${u?u.nome:id}</strong> ao CRM?<br><span style="font-size:.78rem;color:var(--text3)">O login dele deixa de entrar no CRM. Os cards sob a responsabilidade dele continuam no sistema.</span>`,async()=>{
+        try{await fbDb.collection(COL_USUARIOS).doc(id).delete();}catch(e){alert('❌ '+authErrMsg(e));}
+        renderAdminPanel();
+      },null,true);
+    }
+    async function toggleRole(id){const u=loadUsers().find(x=>x.id===id);if(!u)return;await adminUpdateUser(id,{role:u.role==='admin'?'user':'admin'});renderAdminPanel();}
+    function openResetPass(id){rpUserId=id;const u=loadUsers().find(x=>x.id===id);document.getElementById('rpUserLabel').textContent=`Usuário: ${u?.nome} (${u?.email})`;document.getElementById('rpError').style.display='none';document.getElementById('resetPassOverlay').classList.remove('hidden');}
+    function closeResetPass(){document.getElementById('resetPassOverlay').classList.add('hidden');rpUserId=null;}
+    async function confirmResetPass(){
+      const err=document.getElementById('rpError');const u=loadUsers().find(x=>x.id===rpUserId);
+      if(!u||!u.email){err.textContent='Usuário sem e-mail.';err.style.display='block';return;}
+      try{await fbAuth.sendPasswordResetEmail(u.email);closeResetPass();alert('📧 E-mail de redefinição enviado para '+u.email+'.');}
+      catch(e){err.textContent=authErrMsg(e);err.style.display='block';}
+    }
+    async function createUserAdmin(){
       const nome=document.getElementById('nuNome').value.trim(),email=document.getElementById('nuEmail').value.trim().toLowerCase(),pass=document.getElementById('nuPass').value,role=document.getElementById('nuRole').value,err=document.getElementById('nuError');
       err.style.display='none';
       if(!nome||!email||!pass){err.textContent='Preencha todos os campos.';err.style.display='block';return;}
       if(pass.length<6){err.textContent='Senha: mín. 6 caracteres.';err.style.display='block';return;}
-      const users=loadUsers();if(users.find(x=>x.email===email)){err.textContent='E-mail já cadastrado.';err.style.display='block';return;}
-      const now=nowISO();users.push({id:uid(),nome,email,passHash:hashPass(pass),role,active:true,createdAt:now,updatedAt:now});
-      saveUsers(users);if(!state.responsaveis.includes(nome)){state.responsaveis.push(nome);saveState();}
-      document.getElementById('nuNome').value='';document.getElementById('nuEmail').value='';document.getElementById('nuPass').value='';
-      renderAdminPanel();alert(`✅ Usuário "${nome}" criado!`);
+      if(loadUsers().find(x=>x.email===email)){err.textContent='E-mail já cadastrado.';err.style.display='block';return;}
+      let secondary=null;
+      try{
+        // App secundário: cria o login sem derrubar a sessão do admin
+        secondary=firebase.initializeApp(FIREBASE_CONFIG,'crm-secundario-'+Date.now());
+        const cred=await secondary.auth().createUserWithEmailAndPassword(email,pass);
+        try{await cred.user.updateProfile({displayName:nome});}catch(e){}
+        const newId=cred.user.uid;await secondary.auth().signOut();
+        const now=nowISO();
+        await fbDb.collection(COL_USUARIOS).doc(newId).set({id:newId,nome,email,role,active:true,createdAt:now,updatedAt:now});
+        if(!state.responsaveis.includes(nome)){state.responsaveis.push(nome);saveState();}
+        document.getElementById('nuNome').value='';document.getElementById('nuEmail').value='';document.getElementById('nuPass').value='';
+        renderAdminPanel();alert(`✅ Usuário "${nome}" criado!`);
+      }catch(e){err.textContent=authErrMsg(e);err.style.display='block';}
+      finally{if(secondary)secondary.delete().catch(()=>{});}
     }
-    
+
     // ═══════════════════════════════════════
     //  DASHBOARD
     // ═══════════════════════════════════════
