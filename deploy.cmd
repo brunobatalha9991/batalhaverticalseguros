@@ -5,6 +5,9 @@ if exist site rmdir /s /q site
 mkdir site
 copy /y crmbatalha.html site\index.html >nul
 copy /y crmbatalha.html site\crmbatalha.html >nul
+xcopy /e /i /q icons site\icons >nul
+copy /y manifest.webmanifest site\ >nul
+copy /y favicon.ico site\ >nul
 if "%1"=="--regras" (
   firebase deploy --only hosting:crm,firestore:rules --project gc---vertical-seguros
 ) else (

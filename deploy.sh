@@ -7,6 +7,8 @@ cd "$(dirname "$0")"
 rm -rf site && mkdir site
 cp crmbatalha.html site/index.html
 cp crmbatalha.html site/crmbatalha.html
+cp -r icons site/icons
+cp manifest.webmanifest favicon.ico site/
 if [ "$1" = "--regras" ]; then
   firebase deploy --only hosting:crm,firestore:rules --project gc---vertical-seguros
 else
