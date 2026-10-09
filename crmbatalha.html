@@ -1013,7 +1013,10 @@ function parseBRNum(s){
     }
     
     function getAllowedNext(stageId,stages){
-      if(stageId==='renovacao')return['cotacao'];if(FREE_DEST.includes(stageId))return[];
+      if(stageId==='renovacao')return['cotacao'];
+      // Perdido pode ser reativado: volta para qualquer etapa anterior ao funil (exceto Fechado)
+      if(stageId==='perdido'){const me=stages.find(s=>s.id==='perdido');return stages.filter(s=>s.id!=='fechado'&&!FREE_DEST.includes(s.id)&&(!me||s.order<me.order)).map(s=>s.id);}
+      if(FREE_DEST.includes(stageId))return[];
       const idx=stages.findIndex(s=>s.id===stageId);if(idx<0||idx>=stages.length-1)return[];return[stages[idx+1].id];
     }
     
@@ -1299,6 +1302,10 @@ return `<div class="col-header"><div class="col-title-row"><div class="col-dot" 
         addHist(card, 'PERDA — ' + rvCtx.updates.motivoPerda, 'perda');
       }
     
+      if(from.id === 'perdido') {
+        addHist(card, 'REATIVADO — voltou de Perdido para ' + to.name + (card.motivoPerda ? ' (motivo anterior: ' + card.motivoPerda + ')' : ''), 'manual');
+        card.motivoPerda = '';
+      }
       card.stageId = to.id;
       card.ultimaInteracao = nowISO();
       card.updatedAt = nowISO();
