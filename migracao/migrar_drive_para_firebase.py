@@ -3,7 +3,7 @@
 Migra o JSON exportado do Google Drive (crm-seguros-data.json) para o Firebase.
 
 Uso:
-  python -I migrar_drive_para_firebase.py <caminho do crm-seguros-data.json> [--admin EMAIL] [--executar]
+  python -I migrar_drive_para_firebase.py <caminho do crm-seguros-data.json> [--admin EMAIL] [--ignorar EMAIL[,EMAIL]] [--executar]
 
 Sem --executar o script só mostra o que faria (modo simulação).
 
@@ -133,6 +133,9 @@ def main():
     admin_email = None
     if '--admin' in sys.argv:
         admin_email = sys.argv[sys.argv.index('--admin') + 1].strip().lower()
+    ignorar = set()
+    if '--ignorar' in sys.argv:
+        ignorar = {e.strip().lower() for e in sys.argv[sys.argv.index('--ignorar') + 1].split(',') if e.strip()}
     src = args[0]
     data = json.load(io.open(src, encoding='utf-8'))
     if not (data.get('stages') and 'cards' in data):
@@ -148,6 +151,8 @@ def main():
         print(f'    - {u.get("nome")} <{u.get("email")}> role={u.get("role")} ativo={u.get("active")}')
     if admin_email:
         print(f'  administrador garantido: {admin_email}')
+    if ignorar:
+        print(f'  ignorados: {", ".join(sorted(ignorar))}')
     if not executar:
         print('\nModo simulação. Rode de novo com --executar para gravar no Firebase.')
         return
@@ -163,9 +168,11 @@ def main():
         todos.append({'nome': 'Administrador', 'email': admin_email, 'role': 'admin', 'active': True})
     for u in todos:
         email = u['email'].strip().lower()
-        if email in seen or email == 'admin@crm.com':
+        if email in seen or email == 'admin@crm.com' or email in ignorar:
             if email == 'admin@crm.com':
                 print(f'  - {email}: usuário padrão fictício, ignorado')
+            elif email in ignorar:
+                print(f'  - {email}: ignorado a pedido (--ignorar)')
             continue
         seen.add(email)
         nome = (u.get('nome') or email.split('@')[0]).strip()
