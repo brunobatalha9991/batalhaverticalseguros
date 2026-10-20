@@ -612,6 +612,11 @@
     // ═══════════════════════════════════════
     //  ESTADO NUVEM
     // ═══════════════════════════════════════
+    if(typeof firebase==='undefined'||!firebase.auth||!firebase.firestore){
+      const le=document.getElementById('loginError');
+      if(le){le.innerHTML='❌ Não foi possível carregar os componentes do Firebase (www.gstatic.com). Verifique a internet, antivírus, proxy ou bloqueio de rede e recarregue a página.<br><button class="btn btn-ghost btn-sm" style="margin-top:8px" onclick="location.reload()">🔄 Recarregar</button>';le.style.display='block';}
+      throw new Error('Firebase SDK não carregou');
+    }
     const fbApp=firebase.initializeApp(FIREBASE_CONFIG);
     const fbAuth=fbApp.auth();
     const fbDb=fbApp.firestore();
@@ -787,9 +792,26 @@ function parseBRNum(s){
       ['responsaveis','seguradoras','ramos','fontes'].forEach(k=>{state[k]=(d[k]&&d[k].length)?plain(d[k]):(state[k]&&state[k].length?state[k]:DEFAULT_LISTS[k].slice());});
     }
     function replaceInPlace(target,src){Object.keys(target).forEach(k=>delete target[k]);Object.assign(target,src);}
+    function withTimeout(promise,ms,label){return Promise.race([promise,new Promise((_,rej)=>setTimeout(()=>rej(new Error(label||'Sem resposta do servidor. Verifique sua conexão.')),ms))]);}
+    let _loadWatch=null;
+    function armLoadWatchdog(){
+      clearTimeout(_loadWatch);
+      _loadWatch=setTimeout(()=>{
+        const ls=document.getElementById('oauthLoadingScreen');if(!ls||ls.style.display!=='flex')return;
+        const m=document.getElementById('oauthLoadingMsg');if(!m)return;
+        m.innerHTML='⚠️ A conexão com o servidor está demorando mais que o normal.<br><span style="font-size:.8rem;color:var(--text3)">Verifique a internet. Se o problema continuar, use os botões abaixo.</span><br><div style="display:flex;gap:8px;justify-content:center;margin-top:12px"><button class="btn btn-primary btn-sm" onclick="location.reload()">🔄 Tentar novamente</button><button class="btn btn-ghost btn-sm" onclick="forceLogout()">Sair e entrar de novo</button></div>';
+      },15000);
+    }
+    async function forceLogout(){stopCloudListeners();currentUser=null;try{await fbAuth.signOut();}catch(e){}resetLocalState();showScreen('login');}
 
     async function cloudLoadInitial(){
-      const [cardsSnap,cfgSnap]=await Promise.all([fbDb.collection(COL_CARDS).get(),fbDb.collection(COL_CONFIG).doc(DOC_CONFIG).get()]);
+      let cardsSnap,cfgSnap;
+      try{[cardsSnap,cfgSnap]=await withTimeout(Promise.all([fbDb.collection(COL_CARDS).get(),fbDb.collection(COL_CONFIG).doc(DOC_CONFIG).get()]),25000,'Sem resposta do servidor ao carregar os dados.');}
+      catch(err){
+        // Sem servidor: tenta a cópia local (cache) para não travar na tela de carregamento
+        try{[cardsSnap,cfgSnap]=await Promise.all([fbDb.collection(COL_CARDS).get({source:'cache'}),fbDb.collection(COL_CONFIG).doc(DOC_CONFIG).get({source:'cache'})]);if(cardsSnap.empty&&!cfgSnap.exists)throw err;showToast('⚠️ Sem conexão: mostrando a última cópia salva neste computador.',6000);}
+        catch(e2){throw err;}
+      }
       state.cards=cardsSnap.docs.map(d=>d.data()).filter(c=>c&&c.id);
       lastSyncedCards={};state.cards.forEach(c=>{lastSyncedCards[c.id]=stableStr(c);});
       if(cfgSnap.exists){applyRemoteConfig(cfgSnap.data());lastSyncedConfig=configKey();}
@@ -804,7 +826,9 @@ function parseBRNum(s){
 
     function startCloudListeners(){
       stopCloudListeners();
-      unsubCards=fbDb.collection(COL_CARDS).onSnapshot(snap=>{
+      unsubCards=fbDb.collection(COL_CARDS).onSnapshot({includeMetadataChanges:true},snap=>{
+        if(snap.metadata.fromCache){if(cloudStatus!=='syncing')updateCloudBadge('offline');}
+        else if(cloudStatus==='offline')updateCloudBadge('connected');
         let changed=false;
         snap.docChanges().forEach(ch=>{
           const d=ch.doc.data();if(!d||!d.id)return;
@@ -860,12 +884,13 @@ function parseBRNum(s){
     function cloudSyncNow(){if(currentUser)cloudPush();}
 
     function showScreen(which){
+      clearTimeout(_loadWatch);
       document.getElementById('oauthLoadingScreen').style.display='none';
       document.getElementById('loginScreen').style.display=(which==='login')?'flex':'none';
       document.getElementById('appScreen').style.display=(which==='app')?'block':'none';
       document.getElementById('dashScreen').style.display='none';
     }
-    function showLoading(msg){document.getElementById('oauthLoadingScreen').style.display='flex';document.getElementById('loginScreen').style.display='none';const m=document.getElementById('oauthLoadingMsg');if(m&&msg)m.textContent=msg;}
+    function showLoading(msg){armLoadWatchdog();document.getElementById('oauthLoadingScreen').style.display='flex';document.getElementById('loginScreen').style.display='none';const m=document.getElementById('oauthLoadingMsg');if(m&&msg)m.textContent=msg;}
 
     // ═══════════════════════════════════════
     //  BADGES
@@ -877,6 +902,7 @@ function parseBRNum(s){
       if(status==='connected'){badge.classList.add('drive-connected');dot.className='sync-dot sync-dot-green';lbl.textContent='Nuvem: conectado';}
       else if(status==='syncing'){badge.classList.add('drive-syncing');dot.className='sync-dot sync-dot-yellow';lbl.textContent='Nuvem: salvando...';}
       else if(status==='error'){badge.classList.add('drive-disconnected');dot.className='sync-dot sync-dot-gray';lbl.textContent='Nuvem: erro ao salvar';}
+      else if(status==='offline'){badge.classList.add('drive-disconnected');dot.className='sync-dot sync-dot-gray';lbl.textContent='Nuvem: sem conexão (salvando local)';}
       else{badge.classList.add('drive-disconnected');dot.className='sync-dot sync-dot-gray';lbl.textContent='Nuvem: desconectado';}
     }
     function updateLastSyncLabel(){const lbl=document.getElementById('lastSyncLabel');if(!lbl)return;if(cloudLastSync){lbl.style.display='block';lbl.textContent='Última sync: '+fmtDateTime(cloudLastSync);}else lbl.style.display='none';}
@@ -956,7 +982,9 @@ function parseBRNum(s){
       try{
         showLoading('Carregando seus dados...');
         const ref=fbDb.collection(COL_USUARIOS).doc(user.uid);
-        const snap=await ref.get();
+        let snap;
+        try{snap=await withTimeout(ref.get(),20000,'Sem resposta do servidor ao verificar seu acesso.');}
+        catch(err){try{snap=await ref.get({source:'cache'});}catch(e2){throw err;}}
         if(!snap.exists){
           const now=nowISO();
           await ref.set({id:user.uid,nome:user.displayName||(user.email||'').split('@')[0],email:user.email||'',role:'user',active:false,createdAt:now,updatedAt:now});
@@ -972,7 +1000,7 @@ function parseBRNum(s){
       }catch(err){
         console.error('enterWithUser:',err);currentUser=null;stopCloudListeners();
         try{await fbAuth.signOut();}catch(e){}
-        showScreen('login');showLoginErr('Erro ao entrar: '+authErrMsg(err));
+        showScreen('login');showLoginErr('Erro ao entrar: '+authErrMsg(err)+' Tente novamente em alguns instantes.');
       }
     }
 
